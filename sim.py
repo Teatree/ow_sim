@@ -36,6 +36,76 @@ mini_scanning_cost = int(keyValueSheet.acell('C33').value)
 num_deplete_mega = int(keyValueSheet.acell('I27').value)
 mega_scanning_cost = int(keyValueSheet.acell('C35').value)
 
+
+
+# population specific
+runs_weighted_types = []
+for cell in keyValueSheet.range('N7:N11'):
+    runs_weighted_types.append(int(cell.value))
+region_weighted_types = []
+for reg in keyValueSheet.range('N12:N14'):
+    region_weighted_types.append(str(reg.value))
+region_stage_weighted_types = []
+for regs in keyValueSheet.range('N15:N18'):
+    region_stage_weighted_types.append(int(regs.value))
+#run_focus_weighted_types = []
+#for runt in keyValueSheet.range('N19:N21'):
+#    run_focus_weighted_types.append(int(runt.value))
+
+max_runs_weighted_values = []
+for cell in keyValueSheet.range('O7:O11'):
+    max_runs_weighted_values.append(int(cell.value))
+max_region_weighted_values = []
+for cell in keyValueSheet.range('O12:O14'):
+    max_region_weighted_values.append(int(cell.value))
+max_region_stage_weighted_values = []
+for cell in keyValueSheet.range('O15:O18'):
+    max_region_stage_weighted_values.append(int(cell.value))
+#run_focus_weighted_values = []
+#for cell in keyValueSheet.range('R19:O21'):
+#    run_focus_weighted_values.append(int(cell.value))
+
+high_runs_weighted_values = []
+for cell in keyValueSheet.range('P7:P11'):
+    high_runs_weighted_values.append(int(cell.value))
+high_region_weighted_values = []
+for cell in keyValueSheet.range('P12:P14'):
+    high_region_weighted_values.append(int(cell.value))
+high_region_stage_weighted_values = []
+for cell in keyValueSheet.range('P15:P18'):
+    high_region_stage_weighted_values.append(int(cell.value))
+#run_focus_weighted_values = []
+#for cell in keyValueSheet.range('O19:O21'):
+    #run_focus_weighted_values.append(int(cell.value))
+
+moderate_runs_weighted_values = []
+for cell in keyValueSheet.range('Q7:Q11'):
+    moderate_runs_weighted_values.append(int(cell.value))
+moderate_region_weighted_values = []
+for cell in keyValueSheet.range('Q12:Q14'):
+    moderate_region_weighted_values.append(int(cell.value))
+moderate_region_stage_weighted_values = []
+for cell in keyValueSheet.range('Q15:Q18'):
+    moderate_region_stage_weighted_values.append(int(cell.value))
+#run_focus_weighted_values = []
+#for cell in keyValueSheet.range('P19:O21'):
+#    run_focus_weighted_values.append(int(cell.value))
+
+low_runs_weighted_values = []
+for cell in keyValueSheet.range('R7:R11'):
+    low_runs_weighted_values.append(int(cell.value))
+low_region_weighted_values = []
+for cell in keyValueSheet.range('R12:R14'):
+    low_region_weighted_values.append(int(cell.value))
+low_region_stage_weighted_values = []
+for cell in keyValueSheet.range('R15:R18'):
+    low_region_stage_weighted_values.append(int(cell.value))
+#run_focus_weighted_values = []
+#for cell in keyValueSheet.range('Q19:O21'):
+#    run_focus_weighted_values.append(int(cell.value))
+
+
+
 # ================================
 # DEPOSIT DATA
 depositSpawnSheet = gc.open_by_key(spreadsheet_key).worksheet('DepositSpawn_EXPORT')
@@ -240,8 +310,18 @@ def simulate_population_activities():
     population_sim_summary = [['Day','Segment','Population','Total Crypton Spent','Runs','AB Runs','BS Runs','CW Runs','S0 Runs','S1 Runs','S2 Runs','S3 Runs','Mines','GeodyneDeposit','LazuriteDeposit','BismuthDeposit','SeismicQuartz','TectonicNeovite','HelioAgate','Ores Extracted','T0 Ores','T1 Ores','T2 Ores','T3 Ores','T4 Ores','T5 Ores','Shards','T0 Shards','T1 Shards','T2 Shards','T3 Shards','T4 Shards','T5 Shards','Gems','Water Gems','Earth Gems','Fire Gems','Nature Gems','Air Gems','Osvium','Rhodivium','Lithvium','Chrovium','Pallavium','Gallvium','Vanavium','Tellvium','Rubivium','Irivium','Selenvium','Celestvium','ShardT0','ShardT1','ShardT2','ShardT3','ShardT4','ShardT5','WaterGemT0','WaterGemT1','WaterGemT2','WaterGemT3','WaterGemT4','WaterGemT5','EarthGemT0','EarthGemT1','EarthGemT2','EarthGemT3','EarthGemT4','EarthGemT5','FireGemT0','FireGemT1','FireGemT2','FireGemT3','FireGemT4','FireGemT5','NatureGemT0','NatureGemT1','NatureGemT2','NatureGemT3','NatureGemT4','NatureGemT5','AirGemT0','AirGemT1','AirGemT2','AirGemT3','AirGemT4','AirGemT5','Harvests','Clovium','NymphairBasket','Flintcap','Puffballs','StinkyFlora','WallPopper','GumboDandy','Ringshrooms','JellyFruit','Fruit','Essences','SpikeJuice_T0','SpikeJuice_T1','SpikeJuice_T2','SpikeJuice_T3','BasketFruit_T0','BasketFruit_T1','BasketFruit_T2','BasketFruit_T3','FlintCapCap_T0','FlintCapCap_T1','FlintCapCap_T2','FlintCapCap_T3','DragonEgg_T0','DragonEgg_T1','DragonEgg_T2','DragonEgg_T3','Floraball_T0','Floraball_T1','Floraball_T2','Floraball_T3','PopSpore_T0','PopSpore_T1','PopSpore_T2','PopSpore_T3','GumboBaby_T0','GumboBaby_T1','GumboBaby_T2','GumboBaby_T3','Ringnut_T0','Ringnut_T1','Ringnut_T2','Ringnut_T3','JellyfruitTendril_T0','JellyfruitTendril_T1','JellyfruitTendril_T2','JellyfruitTendril_T3','Sanguine','Bolstering','Lethargy','Growth','Agile','Vitality','Haste','Wrath','Guardian','Might','Fury','Ruination']]
     
     for segment_data in population_data:
-        segment_name = segment_data['']  # Assuming the segment name is stored in an empty string key
+        segment_name = segment_data['']
+
         for day_key in tqdm(segment_data.items()):
+            if segment_name == "Max": 
+                num_runs = random.choices(runs_weighted_types, weights=max_runs_weighted_values)[0]
+            if segment_name == "High": 
+                num_runs = random.choices(runs_weighted_types, weights=high_runs_weighted_values)[0]
+            if segment_name == "Moderate": 
+                num_runs = random.choices(runs_weighted_types, weights=moderate_runs_weighted_values)[0]
+            if segment_name == "Low": 
+                num_runs = random.choices(runs_weighted_types, weights=low_runs_weighted_values)[0]
+
             day = ""
             total_crypton_spent = 0
             runs = 0
@@ -250,7 +330,7 @@ def simulate_population_activities():
             extractionsCount = 0
             deposits = ['GeodyneDeposit','LazuriteDeposit','BismuthDeposit','SeismicQuartz','TectonicNeovite','HelioAgate']
             deposit_counts = {}
-            mineables = ['Osvium','Rhodivium','Lithvium','Chrovium','Pallavium','Gallvium','Vanavium','Tellvium','Rubivium','Irivium','Selenvium','Celestvium','ShardT0','ShardT1','ShardT2','ShardT3','ShardT4','ShardT5','WaterGemT0','WaterGemT1','WaterGemT2','WaterGemT3','WaterGemT4','WaterGemT5','EarthGemT0','EarthGemT1','EarthGemT2','EarthGemT3','EarthGemT4','EarthGemT5','FireGemT0','FireGemT1','FireGemT2','FireGemT3','FireGemT4','FireGemT5','NatureGemT0','NatureGemT1','NatureGemT2','NatureGemT3','NatureGemT4','NatureGemT5','AirGemT0','AirGemT1','AirGemT2','AirGemT3','AirGemT4','AirGemT5']
+            mineables = []
             mineablesT0 = ['Osvium','Rhodivium']
             mineablesT1 = ['Lithvium','Chrovium']
             mineablesT2 = ['Pallavium','Gallvium']
@@ -259,15 +339,22 @@ def simulate_population_activities():
             mineablesT5 = ['Selenvium','Celestvium']
             shardTypeCounts = ['ShardT0','ShardT1','ShardT2','ShardT3','ShardT4','ShardT5']
             gemsTypeCounts = ['WaterGemT0','WaterGemT1','WaterGemT2','WaterGemT3','WaterGemT4','WaterGemT5','EarthGemT0','EarthGemT1','EarthGemT2','EarthGemT3','EarthGemT4','EarthGemT5','FireGemT0','FireGemT1','FireGemT2','FireGemT3','FireGemT4','FireGemT5','NatureGemT0','NatureGemT1','NatureGemT2','NatureGemT3','NatureGemT4','NatureGemT5','AirGemT0','AirGemT1','AirGemT2','AirGemT3','AirGemT4','AirGemT5']
-            mineable_counts = {'Osvium':-1,'Rhodivium':-1,'Lithvium':-1,'Chrovium':-1,'Pallavium':-1,'Gallvium':-1,'Vanavium':-1,'Tellvium':-1,'Rubivium':-1,'Irivium':-1,'Selenvium':-1,'Celestvium':-1,'ShardT-1':-1,'ShardT1':-1,'ShardT2':-1,'ShardT3':-1,'ShardT4':-1,'ShardT5':-1,'WaterGemT-1':-1,'WaterGemT1':-1,'WaterGemT2':-1,'WaterGemT3':-1,'WaterGemT4':-1,'WaterGemT5':-1,'EarthGemT-1':-1,'EarthGemT1':-1,'EarthGemT2':-1,'EarthGemT3':-1,'EarthGemT4':-1,'EarthGemT5':-1,'FireGemT-1':-1,'FireGemT1':-1,'FireGemT2':-1,'FireGemT3':-1,'FireGemT4':-1,'FireGemT5':-1,'NatureGemT-1':-1,'NatureGemT1':-1,'NatureGemT2':-1,'NatureGemT3':-1,'NatureGemT4':-1,'NatureGemT5':-1,'AirGemT-1':-1,'AirGemT1':-1,'AirGemT2':-1,'AirGemT3':-1,'AirGemT4':-1,'AirGemT5':-1}
-            t0oresCounts = {'Osvium': -1,'Rhodivium': -1}
-            t1oresCounts = {'Lithvium': -1,'Chrovium': -1}
-            t2oresCounts = {'Pallavium':-1,'Gallvium':-1}
-            t3oresCounts = {'Vanavium':-1,'Tellvium':-1}
-            t4oresCounts = {'Rubivium':-1,'Irivium':-1}
-            t5oresCounts = {'Selenvium':-1,'Celestvium':-1}
-            shardCounts = {'ShardT0':-1,'ShardT1':-1,'ShardT2':-1,'ShardT3':-1,'ShardT4':-1,'ShardT5':-1}
-            gemsCounts = {'WaterGemT-1':-1,'WaterGemT1':-1,'WaterGemT2':-1,'WaterGemT3':-1,'WaterGemT4':-1,'WaterGemT5':-1,'EarthGemT-1':-1,'EarthGemT1':-1,'EarthGemT2':-1,'EarthGemT3':-1,'EarthGemT4':-1,'EarthGemT5':-1,'FireGemT-1':-1,'FireGemT1':-1,'FireGemT2':-1,'FireGemT3':-1,'FireGemT4':-1,'FireGemT5':-1,'NatureGemT-1':-1,'NatureGemT1':-1,'NatureGemT2':-1,'NatureGemT3':-1,'NatureGemT4':-1,'NatureGemT5':-1,'AirGemT-1':-1,'AirGemT1':-1,'AirGemT2':-1,'AirGemT3':-1,'AirGemT4':-1,'AirGemT5':-1}
+            mineable_counts = {'Osvium':0,'Rhodivium':0,'Lithvium':0,'Chrovium':0,'Pallavium':0,'Gallvium':0,'Vanavium':0,'Tellvium':0,'Rubivium':0,'Irivium':0,'Selenvium':0,'Celestvium':0,'ShardT0':0,'ShardT1':0,'ShardT2':0,'ShardT3':0,'ShardT4':0,'ShardT5':0,'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
+            t0oresCounts = {'Osvium': 0,'Rhodivium': 0}
+            t1oresCounts = {'Lithvium': 0,'Chrovium': 0}
+            t2oresCounts = {'Pallavium':0,'Gallvium':0}
+            t3oresCounts = {'Vanavium':0,'Tellvium':0}
+            t4oresCounts = {'Rubivium':0,'Irivium':0}
+            t5oresCounts = {'Selenvium':0,'Celestvium':0}
+            shardCounts = {'ShardT0':0,'ShardT1':0,'ShardT2':0,'ShardT3':0,'ShardT4':0,'ShardT5':0}
+            gemsCounts = {'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
+            regionsAB = 0
+            regionsBS = 0
+            regionsCW = 0
+            regionsS0 = 0
+            regionsS1 = 0
+            regionsS2 = 0
+            regionsS3 = 0
 
 
             if day_key[0] != '':  # Skip the segment name
@@ -276,11 +363,25 @@ def simulate_population_activities():
                 
                 while populationCount < population:
                     populationCount += 1
+                    if segment_name == "Max": 
+                        region_name = random.choices(region_weighted_types, weights=max_region_weighted_values)[0]
+                        region_stage = random.choices(region_stage_weighted_types, weights=max_region_stage_weighted_values)[0]
+                    if segment_name == "High": 
+                        region_name = random.choices(region_weighted_types, weights=high_region_weighted_values)[0]
+                        region_stage = random.choices(region_stage_weighted_types, weights=high_region_stage_weighted_values)[0]
+                    if segment_name == "Moderate": 
+                        region_name = random.choices(region_weighted_types, weights=moderate_region_weighted_values)[0]
+                        region_stage = random.choices(region_stage_weighted_types, weights=moderate_region_stage_weighted_values)[0]
+                    if segment_name == "Low": 
+                        region_name = random.choices(region_weighted_types, weights=low_region_weighted_values)[0]
+                        region_stage = random.choices(region_stage_weighted_types, weights=low_region_stage_weighted_values)[0]
                     simMiningResult = createMiningSimData(mining_sim_sheet)
                     
                     for run in simMiningResult:
                         runs += 1
                         total_crypton_spent += 1000
+                        
+
                         for extraction in run['Extractions']:
                             # Format each extraction as a row according to your specified columns
                             row = [
@@ -297,52 +398,69 @@ def simulate_population_activities():
                                 ]
                             extractionsCount += 1
                             
+                            if region_name == "AB":
+                                regionsAB += 1
+                            if region_name == "BS":
+                                regionsBS += 1
+                            if region_name == "CW":
+                                regionsCW += 1
+                            if region_stage == 0:
+                                regionsS0 += 1
+                            if region_stage == 1:
+                                regionsS1 += 1
+                            if region_stage == 2:
+                                regionsS2 += 1
+                            if region_stage == 3:
+                                regionsS3 += 1
+
+
                             deposits.append(extraction['Deposit'])
                             mineables.append(extraction['MineableExtracted'])
                     
                     mining_data_for_writing.append(row)
-            # calculate deposits
-            for d in deposits:
-                if d in deposit_counts:
-                    deposit_counts[d] += 1
-                else:
-                    deposit_counts[d] = 1
-            # calculate mineables
-            for m in mineables:
-                if m in mineable_counts:
-                    mineable_counts[m] += 1
-                    if m in mineablesT0:
-                        t0oresCounts[m] += 1
-                    if m in mineablesT1:
-                        t1oresCounts[m] += 1
-                    if m in mineablesT2:
-                        t2oresCounts[m] += 1
-                    if m in mineablesT3:
-                        t3oresCounts[m] += 1
-                    if m in mineablesT4:
-                        t4oresCounts[m] += 1
-                    if m in mineablesT5:
-                        t5oresCounts[m] += 1
-                    if m in shardTypeCounts:
-                        shardCounts[m] += 1
-                    if m in gemsTypeCounts:
-                        gemsCounts[m] += 1
-                #else:
-                    #mineable_counts[m] = 0
+                # calculate deposits
+                for d in deposits:
+                    if d in deposit_counts:
+                        deposit_counts[d] += 1
+                    else:
+                        deposit_counts[d] = 1
+                # calculate mineables
+                #mineables 
+                for m in mineables:
+                    if m in mineable_counts:
+                        mineable_counts[m] += 1
+                        if m in mineablesT0:
+                            t0oresCounts[m] += 1
+                        if m in mineablesT1:
+                            t1oresCounts[m] += 1
+                        if m in mineablesT2:
+                            t2oresCounts[m] += 1
+                        if m in mineablesT3:
+                            t3oresCounts[m] += 1
+                        if m in mineablesT4:
+                            t4oresCounts[m] += 1
+                        if m in mineablesT5:
+                            t5oresCounts[m] += 1
+                        if m in shardTypeCounts:
+                            shardCounts[m] += 1
+                        if m in gemsTypeCounts:
+                            gemsCounts[m] += 1
+                    #else:
+                        #mineable_counts[m] = 0
 
-            dpeositCounts = list(deposit_counts.values())
-            mineableCounts = list(mineable_counts.values())
-            t0ORECounts = list(t0oresCounts.values())
-            t1ORECounts = list(t1oresCounts.values())
-            t2ORECounts = list(t2oresCounts.values())
-            t3ORECounts = list(t3oresCounts.values())
-            t4ORECounts = list(t4oresCounts.values())
-            t5ORECounts = list(t5oresCounts.values())
-            shardCountsVals = list(shardCounts.values())
-            gemCountsVals = list(gemsCounts.values())
+                dpeositCounts = list(deposit_counts.values())
+                mineableCounts = list(mineable_counts.values())
+                t0ORECounts = list(t0oresCounts.values())
+                t1ORECounts = list(t1oresCounts.values())
+                t2ORECounts = list(t2oresCounts.values())
+                t3ORECounts = list(t3oresCounts.values())
+                t4ORECounts = list(t4oresCounts.values())
+                t5ORECounts = list(t5oresCounts.values())
+                shardCountsVals = list(shardCounts.values())
+                gemCountsVals = list(gemsCounts.values())
 
             if day_key[0] != '':  # Skip the segment name
-                miningDayData = [day, segment_name, population, total_crypton_spent, runs, runs, 0, 0, 0, 0, 0, 0, extractionsCount, *dpeositCounts, 
+                miningDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                  sum(mineableCounts), sum(t0ORECounts), sum(t1ORECounts),sum(t2ORECounts),sum(t3ORECounts),sum(t4ORECounts),sum(t5ORECounts), sum(shardCountsVals), 
                                  *shardCountsVals, sum(gemCountsVals), *mineableCounts]
                 population_sim_summary.append(miningDayData)
@@ -505,45 +623,45 @@ def createHarvestingSimData(harvesting_sim_sheet):
 mining_data_for_writing = []
 harvesting_data_for_writing = []
 
-simMiningResult = createMiningSimData(mining_sim_sheet)
-for run in simMiningResult:
-    for extraction in run['Extractions']:
-        # Format each extraction as a row according to your specified columns
-        row = [
-            run['Run'],
-            run['Region'],
-            run['Stage'],
-            extraction['EnergyForMining'],  # Assuming this is the Energy Balance
-            extraction['Ex'],
-            extraction['Deposit'],
-            extraction['Category'],
-            extraction['EnergySpent'],
-            extraction['MineableExtracted'],
-            extraction['Amount'],
-        ]
-        mining_data_for_writing.append(row)
-
-simHarvestingResult = createHarvestingSimData(harvesting_sim_sheet)
-for run in simHarvestingResult:
-    #print("this: " + str(simHarvestingResult))
-    for extraction in run['Extractions']:
-        # Format each extraction as a row according to your specified columns
-        row = [
-            run['Run'],
-            run['Region'],
-            run['Stage'],
-            extraction['EnergyForHarvesting'],  # Assuming this is the Energy Balance
-            extraction['Ex'],
-            extraction['Harvestable'],
-            extraction['EnergySpent'],
-            extraction['HarvestableExtracted'],
-            extraction['Amount'],
-            extraction['EssenceExtracted'],
-            extraction['BonusEssenceExtracted']
-        ]
-        harvesting_data_for_writing.append(row)
-        ##print("OUTPUT:" + str(harvesting_data_for_writing))
 def  individualSim():
+    simMiningResult = createMiningSimData(mining_sim_sheet)
+    for run in tqdm(simMiningResult):
+        for extraction in run['Extractions']:
+            # Format each extraction as a row according to your specified columns
+            row = [
+                run['Run'],
+                run['Region'],
+                run['Stage'],
+                extraction['EnergyForMining'],  # Assuming this is the Energy Balance
+                extraction['Ex'],
+                extraction['Deposit'],
+                extraction['Category'],
+                extraction['EnergySpent'],
+                extraction['MineableExtracted'],
+                extraction['Amount'],
+            ]
+            mining_data_for_writing.append(row)
+
+    simHarvestingResult = createHarvestingSimData(harvesting_sim_sheet)
+    for run in tqdm(simHarvestingResult):
+        #print("this: " + str(simHarvestingResult))
+        for extraction in run['Extractions']:
+            # Format each extraction as a row according to your specified columns
+            row = [
+                run['Run'],
+                run['Region'],
+                run['Stage'],
+                extraction['EnergyForHarvesting'],  # Assuming this is the Energy Balance
+                extraction['Ex'],
+                extraction['Harvestable'],
+                extraction['EnergySpent'],
+                extraction['HarvestableExtracted'],
+                extraction['Amount'],
+                extraction['EssenceExtracted'],
+                extraction['BonusEssenceExtracted']
+            ]
+            harvesting_data_for_writing.append(row)
+            ##print("OUTPUT:" + str(harvesting_data_for_writing))
     if mining_data_for_writing:
         number_of_rows_to_clear = len(mining_sim_sheet.get_all_values())
         range_to_clear = f'A2:K{number_of_rows_to_clear}'
