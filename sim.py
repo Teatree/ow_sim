@@ -328,8 +328,15 @@ def simulate_population_activities():
             populationCount = 0
             population = 0
             extractionsCount = 0
-            deposits = ['GeodyneDeposit','LazuriteDeposit','BismuthDeposit','SeismicQuartz','TectonicNeovite','HelioAgate']
-            deposit_counts = {}
+            harvestsCount = 0
+            fruitCount = 0
+            essenceCount = 0
+            deposits = []
+            harvests = []
+            deposit_counts = {'GeodyneDeposit': 0,'LazuriteDeposit': 0,'BismuthDeposit': 0,'SeismicQuartz': 0,'TectonicNeovite': 0,'HelioAgate': 0}
+            harvests_counts = {'Clovium': 0,'NymphairBasket': 0,'Puffballs': 0,'StinkyFlora': 0,'WallPopper': 0,'GumboDandy': 0,'Ringshrooms': 0,'JellyFruit': 0}
+            harvestResults = []
+            harvestResult_counts = {'SpikeJuice_T0': 0,'SpikeJuice_T1': 0,'SpikeJuice_T2': 0,'SpikeJuice_T3': 0,'BasketFruit_T0': 0,'BasketFruit_T1': 0,'BasketFruit_T2': 0,'BasketFruit_T3': 0,'FlintCapCap_T0': 0,'FlintCapCap_T1': 0,'FlintCapCap_T2': 0,'FlintCapCap_T3': 0,'DragonEgg_T0': 0,'DragonEgg_T1': 0,'DragonEgg_T2': 0,'DragonEgg_T3': 0,'Floraball_T0': 0,'Floraball_T1': 0,'Floraball_T2': 0,'Floraball_T3': 0,'PopSpore_T0': 0,'PopSpore_T1': 0,'PopSpore_T2': 0,'PopSpore_T3': 0,'GumboBaby_T0': 0,'GumboBaby_T1': 0,'GumboBaby_T2': 0,'GumboBaby_T3': 0,'Ringnut_T0': 0,'Ringnut_T1': 0,'Ringnut_T2': 0,'Ringnut_T3': 0,'JellyfruitTendril_T0': 0,'JellyfruitTendril_T1': 0,'JellyfruitTendril_T2': 0,'JellyfruitTendril_T3': 0,'Sanguine': 0,'Bolstering': 0,'Lethargy': 0,'Growth': 0,'Agile': 0,'Vitality': 0,'Haste': 0,'Wrath': 0,'Guardian': 0,'Might': 0,'Fury': 0,'Ruination':0}
             mineables = []
             mineablesT0 = ['Osvium','Rhodivium']
             mineablesT1 = ['Lithvium','Chrovium']
@@ -381,7 +388,6 @@ def simulate_population_activities():
                         runs += 1
                         total_crypton_spent += 1000
                         
-
                         for extraction in run['Extractions']:
                             # Format each extraction as a row according to your specified columns
                             row = [
@@ -416,8 +422,33 @@ def simulate_population_activities():
 
                             deposits.append(extraction['Deposit'])
                             mineables.append(extraction['MineableExtracted'])
-                    
-                    mining_data_for_writing.append(row)
+                
+                    simHarvestingResult = createHarvestingSimData(harvesting_sim_sheet)
+                    for run in simHarvestingResult:
+                        #print("this: " + str(simHarvestingResult))
+                        for extraction in run['Extractions']:
+                            # Format each extraction as a row according to your specified columns
+                            row = [
+                                run['Run'],
+                                run['Region'],
+                                run['Stage'],
+                                extraction['EnergyForHarvesting'],  # Assuming this is the Energy Balance
+                                extraction['Ex'],
+                                extraction['Harvestable'],
+                                extraction['EnergySpent'],
+                                extraction['HarvestableExtracted'],
+                                extraction['Amount'],
+                                extraction['EssenceExtracted'],
+                                extraction['BonusEssenceExtracted']
+                            ]
+                            harvestsCount += 1
+
+                            harvests.append(extraction['Harvestable'])
+                            harvestResults.append(extraction['HarvestableExtracted'])
+
+                            
+            
+            ##print("OUTPUT:" + str(harvesting_data_for_writing))
                 # calculate deposits
                 for d in deposits:
                     if d in deposit_counts:
@@ -447,6 +478,24 @@ def simulate_population_activities():
                             gemsCounts[m] += 1
                     #else:
                         #mineable_counts[m] = 0
+                            
+                # calculate harvestables
+                for d in harvests:
+                    d = d.replace('_Stage0', '')
+                    d = d.replace('_Stage1', '')
+                    d = d.replace('_Stage2', '')
+                    d = d.replace('_Stage3', '')
+                    if d in harvests_counts:
+                        harvests_counts[d] += 1
+                    else:
+                        harvests_counts[d] = 1
+
+                # calculate harvestables
+                for d in harvestResults:
+                    if d in harvestResult_counts:
+                        harvestResult_counts[d] += 1
+                    else:
+                        harvestResult_counts[d] = 1
 
                 dpeositCounts = list(deposit_counts.values())
                 mineableCounts = list(mineable_counts.values())
@@ -458,12 +507,14 @@ def simulate_population_activities():
                 t5ORECounts = list(t5oresCounts.values())
                 shardCountsVals = list(shardCounts.values())
                 gemCountsVals = list(gemsCounts.values())
+                harvestsCountsVals = list(harvests_counts.values())
+                harvestResultCountsVals = list(harvestResult_counts.values())
 
             if day_key[0] != '':  # Skip the segment name
-                miningDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
+                simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                  sum(mineableCounts), sum(t0ORECounts), sum(t1ORECounts),sum(t2ORECounts),sum(t3ORECounts),sum(t4ORECounts),sum(t5ORECounts), sum(shardCountsVals), 
-                                 *shardCountsVals, sum(gemCountsVals), *mineableCounts]
-                population_sim_summary.append(miningDayData)
+                                 *shardCountsVals, sum(gemCountsVals), *mineableCounts, harvestsCount, *harvestsCountsVals, 0, 0, *harvestResultCountsVals]
+                population_sim_summary.append(simDayData)
             
 
             #population_sim_summary = [day, segment_name, population, total_crypton_spent, runs]  # Fill in with the results of simulations
@@ -614,7 +665,7 @@ def createHarvestingSimData(harvesting_sim_sheet):
             'Stage': region_stage,
             'Extractions': extractions
         })
-    print("Harvesting Done")
+    #print("Harvesting Done")
     return simHarvestingResult
 
 # =======================
