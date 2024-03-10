@@ -510,6 +510,9 @@ def simulate_population_activities():
                 harvestsCountsVals = list(harvests_counts.values())
                 harvestResultCountsVals = list(harvestResult_counts.values())
 
+
+
+
             if day_key[0] != '':  # Skip the segment name
                 simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                  sum(mineableCounts), sum(t0ORECounts), sum(t1ORECounts),sum(t2ORECounts),sum(t3ORECounts),sum(t4ORECounts),sum(t5ORECounts), sum(shardCountsVals), 
