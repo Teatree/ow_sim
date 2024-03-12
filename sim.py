@@ -3,7 +3,8 @@ import random
 from oauth2client.service_account import ServiceAccountCredentials
 from tqdm import tqdm
 #from encounter import simulateEncounters
-#from encounter2 import simulateEncounters
+from encounter2 import publicSimulateResults
+from encounter2 import publicSimulateEncountersPopulation
 
 # Authorization Setup
 scope = [
@@ -19,23 +20,32 @@ gc = gspread.authorize(credentials)
 spreadsheet_key = '1OfSVkFkOfhmMN8GUiv4-cWTZQmgiWTr7Q3NRp9GpYWc' 
 keyValueSheet = gc.open_by_key(spreadsheet_key).worksheet('KeyValue')
 
-# Fetch KeyValue input data
-num_runs = int(keyValueSheet.acell('H7').value)
-energyForMining = int(keyValueSheet.acell('I18').value)
-energyForHarvesting = int(keyValueSheet.acell('I19').value)
-energyForEncounter = int(keyValueSheet.acell('I20').value)
-energy_cost_per_mining = int(keyValueSheet.acell('C33').value)
-energy_cost_per_encounter = int(keyValueSheet.acell('C36').value)
-region_name = keyValueSheet.acell('I11').value
-region_stage = int(keyValueSheet.acell('I12').value)
-num_harvestables = int(keyValueSheet.acell('I24').value)
-num_deposits = int(keyValueSheet.acell('I22').value)
-num_mega_deposits = int(keyValueSheet.acell('I23').value)
-harvesting_cost = int(keyValueSheet.acell('C34').value)
-mini_scanning_cost = int(keyValueSheet.acell('C33').value)
-num_deplete_mega = int(keyValueSheet.acell('I27').value)
-mega_scanning_cost = int(keyValueSheet.acell('C35').value)
+# Fetch each range separately
+range_1 = keyValueSheet.range('H7:I27')
+range_2 = keyValueSheet.range('C33:C36')
 
+# Combine the cell ranges into one list
+cells = range_1 + range_2
+
+# Continue with the dictionary comprehension as before
+cell_values = {(cell.row, cell.col): cell.value for cell in cells}
+
+# Fetch KeyValue input data
+num_runs = int(cell_values[(7, 8)])
+energyForMining = int(cell_values[(18, 9)])
+energyForHarvesting = int(cell_values[(19, 9)])
+energyForEncounter = int(cell_values[(20, 9)])
+energy_cost_per_mining = int(cell_values[(33, 3)])
+energy_cost_per_encounter = int(cell_values[(36, 3)])
+region_name = cell_values[(11, 9)]
+region_stage = int(cell_values[(12, 9)])
+num_harvestables = int(cell_values[(24, 9)])
+num_deposits = int(cell_values[(22, 9)])
+num_mega_deposits = int(cell_values[(23, 9)])
+harvesting_cost = int(cell_values[(34, 3)])
+mini_scanning_cost = int(cell_values[(33, 3)])
+num_deplete_mega = int(cell_values[(27, 9)])
+mega_scanning_cost = int(cell_values[(35, 3)])
 
 
 # population specific
@@ -446,7 +456,7 @@ def simulate_population_activities():
                             harvests.append(extraction['Harvestable'])
                             harvestResults.append(extraction['HarvestableExtracted'])
 
-                            
+                    encounterResults = publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers)  
             
             ##print("OUTPUT:" + str(harvesting_data_for_writing))
                 # calculate deposits
@@ -511,12 +521,10 @@ def simulate_population_activities():
                 harvestResultCountsVals = list(harvestResult_counts.values())
 
 
-
-
             if day_key[0] != '':  # Skip the segment name
                 simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                  sum(mineableCounts), sum(t0ORECounts), sum(t1ORECounts),sum(t2ORECounts),sum(t3ORECounts),sum(t4ORECounts),sum(t5ORECounts), sum(shardCountsVals), 
-                                 *shardCountsVals, sum(gemCountsVals), *mineableCounts, harvestsCount, *harvestsCountsVals, 0, 0, *harvestResultCountsVals]
+                                 *shardCountsVals, sum(gemCountsVals), *mineableCounts, harvestsCount, *harvestsCountsVals, 0, 0, *harvestResultCountsVals, *encounterResults]
                 population_sim_summary.append(simDayData)
             
 
@@ -716,6 +724,9 @@ def  individualSim():
             ]
             harvesting_data_for_writing.append(row)
             ##print("OUTPUT:" + str(harvesting_data_for_writing))
+    
+    publicSimulateResults(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers)
+
     if mining_data_for_writing:
         number_of_rows_to_clear = len(mining_sim_sheet.get_all_values())
         range_to_clear = f'A2:K{number_of_rows_to_clear}'
@@ -740,18 +751,30 @@ def  individualSim():
         harvesting_sim_sheet.batch_clear([range_to_clear])
 
 
+
+
+# Simulate Encounters
+headers = keyValueSheet.row_values(30)
+
+shard_names_col = headers.index('Shard Type') + 1
+shard_amounts_col = headers.index('Shard Amounts') + 1  # +1 because list index is 0-based, but gspread is 1-based
+shard_power_col = headers.index('Shard Power') + 1
+
+shard_names = keyValueSheet.col_values(shard_names_col)[30:38]
+shard_amounts_values = keyValueSheet.col_values(shard_amounts_col)[30:38] 
+shard_power_values = keyValueSheet.col_values(shard_power_col)[30:38]
+
+shard_amounts_values_int = [int(value) for value in shard_amounts_values]
+shard_power_values_int = [int(value) for value in shard_power_values]
+
+shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
+shard_powers = dict(zip(shard_names, shard_power_values_int))
+
+
 print("simulating")
 simulate_population_activities()
 #individualSim()
 
-# Simulate Encounters
-headers = keyValueSheet.row_values(30)
-shard_amounts_col = headers.index('Shard Amounts') + 1  # +1 because list index is 0-based, but gspread is 1-based
-shard_power_col = headers.index('Shard Power') + 1
-
-shard_amounts_values = keyValueSheet.col_values(shard_amounts_col)[30:38]  # Skip header row and take next 7
-shard_power_values = keyValueSheet.col_values(shard_power_col)[30:38]
-
-combined_values = shard_amounts_values + shard_power_values
-print("combined_values: " + str(combined_values))
-#simulateEncounters(region_name, region_stage, num_runs, energyForEncounter, energy_cost_per_encounter, *combined_values)
+#combined_values = shard_amounts_values + shard_power_values
+#print("combined_values: " + str(combined_values))
+# publicSimulateResults(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers)
