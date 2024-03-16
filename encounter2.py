@@ -1,4 +1,3 @@
-import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import random
 import math
@@ -7,17 +6,11 @@ import numpy as np
 from collections import defaultdict
 from bondingCurveCalc import calculateBondingCurveValue
 
-# Setup and Authorization
-scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-
-spreadsheet_key = '1OfSVkFkOfhmMN8GUiv4-cWTZQmgiWTr7Q3NRp9GpYWc' 
-credentials = ServiceAccountCredentials.from_json_keyfile_name('quiet-notch-415414-04dc8df47d6d.json', scope)
-gc = gspread.authorize(credentials)
-
 # Configuration (Placeholder - Replace with actual values)
 num_runs = 10
 region_name = 'AB'
-region_stage = 1 
+region_stage = 1
+print("Encounter") 
 
 shardT0amount = 25
 shardT1amount = 25
@@ -38,24 +31,6 @@ bonrdingcurve_values = {}
 numCaptureAttempts = 5
 num_encounters = 15
 
-# Helper Functions
-def load_sheet_data(sheet_name):
-    """Load data from a specified sheet."""
-    sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
-    return sheet.get_all_records()
-
-def load_illuvial_weights(sheet_name):
-    sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
-    data = sheet.get_all_records()
-    weights = {}
-    for row in data:
-        weights[(row['Region'], row['Region Stage'], row['Encounter Type'])] = {
-            'Stage': {key: value for key, value in row.items() if key.startswith('S')},
-            'Tier': {key: value for key, value in row.items() if key.startswith('T')},
-            'Affinity': {key: value for key, value in row.items() if key in ['Water', 'Fire', 'Earth', 'Air', 'Nature']},
-            'Class': {key: value for key, value in row.items() if key not in ['Region', 'Stage', 'Encounter Type', 'Weight', 'Target Power']}
-        }
-    return weights
 
 # Function to calculate combined weights for Illuvials
 def calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region, stage, encounter_type, illuvial_capture_counts):
@@ -87,43 +62,11 @@ def calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region
     #print("combined_weights: " + str(combined_weights))
     return combined_weights
 
-def load_illuvials_list(sheet_name):
-    sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
-    # Get all values from the sheet
-    all_values = sheet.get_all_values()
-    # Identify the header row, assuming it's the first row
-    headers = all_values[1]
-    #print("header: " + str(headers[0]))
-    
-    # Find the indices for the columns you're interested in
-    production_id_idx = headers.index('Production_ID')  # Replace with the correct header if necessary
-    stage_idx = headers.index('Stage')
-    tier_idx = headers.index('Tier')
-    affinity_idx = headers.index('Affinity')
-    class_idx = headers.index('Class')
-    mastery_points_idx = headers.index('Mastery Points')
-    
-    illuvials_list = []
-    # Skip the header row with [1:]
-    for row in all_values[1:]:
-        # Construct a dictionary for each Illuvial
-        illuvial = {
-            'Production_ID': row[production_id_idx],
-            'Stage': row[stage_idx],
-            'Tier': row[tier_idx],
-            'Affinity': row[affinity_idx],
-            'Class': row[class_idx],
-            'Mastery Points': row[mastery_points_idx],
-        }
-        illuvials_list.append(illuvial)
-    
-    return illuvials_list
 
 # Combining Weigths for Illuvials
 def get_weighted_choice(options):
     """Given a list of tuples [(illuvial_identifier, combined_weight)], return an identifier based on the weighted probability."""
     identifiers, weights = zip(*options)
-
 
     total = sum(weights)
     r = random.uniform(0, total)
@@ -134,10 +77,6 @@ def get_weighted_choice(options):
             return identifier
         upto += weight
     assert False, "Shouldn't get here"
-
-def load_capture_difficulties(sheet_name):
-    sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
-    return sheet.get_all_records()
 
 def calculate_capture_probability(capture_power, capture_difficulty, bonding_curve_value):
     overshoot = 1.1  # 110%
@@ -212,8 +151,8 @@ def calc_synergy_thresholds(stacks: dict):
     return thresholds
 
 # Main Functions
-def simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, combined_illuvial_weights, illuvials_list, 
-                        shard_amounts_vals, shard_powers, capture_difficulties, energy_per_encounter, illuvial_capture_counts, energy_balance):
+def simulate_encounters(num_runs, region_name, region_stage, encounter_types, encounter_type, quantity_weights_processed, combined_illuvial_weights, 
+                        illuvials_list, shard_amounts_vals, shard_powers, capture_difficulties, energy_per_encounter, illuvial_capture_counts, energy_balance):
     """Simulate encounters based on the provided parameters and probabilities."""
     allEncountersInRegion = []
     encounter_illuvials = []
@@ -224,7 +163,7 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types_pro
     shardsUsedForCapture = []
 
     encounter_index = 1  # Initialize encounter index
-    target_power = get_target_power(region_stage, encounter_type) # init target power
+    target_power = get_target_power(region_stage, encounter_type, encounter_types) # init target power
 
     for run in range(1, num_runs + 1):
         shard_amounts = shard_amounts_vals
@@ -314,24 +253,24 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types_pro
     
     return illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture
 
-def write_to_sheet(sheet_name, data):
-    """Write the simulation allEncountersInRegion to the specified Google Sheet."""
-    sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
-    sheet.resize(rows=len(data) + 1, cols=len(data[0]) if data else 0)
-    sheet.update('A2', data, value_input_option='USER_ENTERED')
+# def write_to_sheet(sheet_name, data):
+#     """Write the simulation allEncountersInRegion to the specified Google Sheet."""
+#     sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
+#     sheet.resize(rows=len(data) + 1, cols=len(data[0]) if data else 0)
+#     sheet.update('A2', data, value_input_option='USER_ENTERED')
 
-def get_target_power(region_stage, encounter_type):
+def get_target_power(region_stage, encounter_type, encounter_types):
     for row in encounter_types:
         if row['Stage'] == region_stage and row['Encounter'] == encounter_type:
             return row['Target Power']
     return None  # Return None or raise an exception if not found
 
 # Load data from sheets (Placeholder - Replace with actual data retrieval)
-encounter_types = load_sheet_data('EncounterType_EXPORT')
-quantity_weights = load_sheet_data('QuantityWeightsTable_EXPORT')
-illuvial_weights = load_illuvial_weights('IlluvialWeightsTable_EXPORT')
-illuvials_list = load_illuvials_list('IlluvialsList')
-capture_difficulties = load_capture_difficulties('Capture')
+# encounter_types = load_sheet_data('EncounterType_EXPORT')
+# quantity_weights = load_sheet_data('QuantityWeightsTable_EXPORT')
+# illuvial_weights = load_illuvial_weights('IlluvialWeightsTable_EXPORT')
+# illuvials_list = load_illuvials_list('IlluvialsList')
+# capture_difficulties = load_capture_difficulties('Capture')
 
 # Shard details and powers
 #shard_amounts = {
@@ -339,17 +278,17 @@ capture_difficulties = load_capture_difficulties('Capture')
 #    'Shard T3': shardT3amount, 'Shard T4': shardT4amount, 'Shard T5': shardT5amount,
 #    'Master Shard': masterShardamount
 #}
-shard_powers = {
-    'Shard T0': shardT0power, 'Shard T1': shardT1power, 'Shard T2': shardT2power,
-    'Shard T3': shardT3power, 'Shard T4': shardT4power, 'Shard T5': shardT5power,
-    'Master Shard': masterShardpower
-}
+# shard_powers = {
+#     'Shard T0': shardT0power, 'Shard T1': shardT1power, 'Shard T2': shardT2power,
+#     'Shard T3': shardT3power, 'Shard T4': shardT4power, 'Shard T5': shardT5power,
+#     'Master Shard': masterShardpower
+# }
 
-encounter_types_processed = [(record['Encounter'], record['Weight']) for record in encounter_types]
+# encounter_types_processed = [(record['Encounter'], record['Weight']) for record in encounter_types]
 
-encounter_type = get_weighted_choice(encounter_types_processed)
+# encounter_type = get_weighted_choice(encounter_types_processed)
 
-target_power = 0
+# target_power = 0
 
 
 #quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
@@ -375,49 +314,54 @@ target_power = 0
 #write_to_sheet('EncounterSim', simulationResults)
 
 
-def publicSimulateResults (num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, illuvial_capture_counts):
+# def publicSimulateResults (num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, illuvial_capture_counts):
+#     num_runs = num_runs
+#     region_name = region_name
+#     region_stage = region_stage
+#     energy_balance = energyForEncounter
+#     energy_per_encounter = energy_cost_per_encounter
+
+#     simulationResults = simulate_encounters(
+#         num_runs, 
+#         region_name, 
+#         region_stage, 
+#         encounter_types_processed, 
+#         quantity_weights_processed, 
+#         combined_illuvial_weights, 
+#         illuvials_list,
+#         shard_amounts_values,
+#         shard_power_values, 
+#         capture_difficulties,
+#         illuvial_capture_counts,
+#         energy_balance
+#     )
+
+#     write_to_sheet('EncounterSim', simulationResults)
+
+def publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, 
+                                       illuvial_capture_counts, encounter_types, quantity_weights, illuvial_weights, illuvials_list, capture_difficulties):
     num_runs = num_runs
     region_name = region_name
     region_stage = region_stage
     energy_balance = energyForEncounter
     energy_per_encounter = energy_cost_per_encounter
+    encounter_types_processed = [(record['Encounter'], record['Weight']) for record in encounter_types]
+    encounter_type = get_weighted_choice(encounter_types_processed)
 
-    simulationResults = simulate_encounters(
-        num_runs, 
-        region_name, 
-        region_stage, 
-        encounter_types_processed, 
-        quantity_weights_processed, 
-        combined_illuvial_weights, 
-        illuvials_list,
-        shard_amounts_values,
-        shard_power_values, 
-        capture_difficulties,
-        illuvial_capture_counts,
-        energy_balance
-    )
-
-    write_to_sheet('EncounterSim', simulationResults)
-
-def publicSimulateEncountersPopulation (num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, illuvial_capture_counts):
-    num_runs = num_runs
-    region_name = region_name
-    region_stage = region_stage
-    energy_balance = energyForEncounter
-    energy_per_encounter = energy_cost_per_encounter
     quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
     combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type, illuvial_capture_counts)
 
     illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture = simulate_encounters(
-        num_runs, 
-        region_name, 
-        region_stage, 
-        encounter_types_processed, 
-        quantity_weights_processed, 
-        combined_illuvial_weights, 
+        num_runs,
+        region_name,
+        region_stage,
+        encounter_types,
+        encounter_type,
+        quantity_weights_processed,
+        combined_illuvial_weights,
         illuvials_list,
         shard_amounts_values,
-        shard_power_values, 
+        shard_power_values,
         capture_difficulties,
         energy_per_encounter,
         illuvial_capture_counts,
@@ -439,10 +383,10 @@ def publicSimulateEncountersPopulation (num_runs, region_name, region_stage, ene
     # Building the final list containing the required information
     result = [
         sum_illuvialCaptured,
-        "illuvialCaptured_str",
+        illuvialCaptured_str,
         tier_counts["T0"], tier_counts["T1"], tier_counts["T2"], tier_counts["T3"], tier_counts["T4"], tier_counts["T5"],
         stage_counts["S1"], stage_counts["S2"], stage_counts["S3"], 
-        "shardsUsedForCapture_str",
+        shardsUsedForCapture_str,
         sum_shardsUsedForCapture
     ]
 
