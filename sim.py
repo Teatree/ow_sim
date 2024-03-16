@@ -6,6 +6,7 @@ from tqdm import tqdm
 #from encounter import simulateEncounters
 from encounter2 import publicSimulateResults
 from encounter2 import publicSimulateEncountersPopulation
+from multiprocessing import Pool
 
 # Authorization Setup
 scope = [
@@ -23,7 +24,7 @@ keyValueSheet = gc.open_by_key(spreadsheet_key).worksheet('KeyValue')
 
 # Fetch each range separately
 range_1 = keyValueSheet.range('H7:I27')
-range_2 = keyValueSheet.range('C11:C36')
+range_2 = keyValueSheet.range('C11:C37')
 
 # Combine the cell ranges into one list
 cells = range_1 + range_2
@@ -37,7 +38,7 @@ energyForMining = int(cell_values[(18, 9)])
 energyForHarvesting = int(cell_values[(19, 9)])
 energyForEncounter = int(cell_values[(20, 9)])
 energy_cost_per_mining = int(cell_values[(33, 3)])
-energy_cost_per_encounter = int(cell_values[(36, 3)])
+energy_cost_per_encounter = int(cell_values[(36, 3)])+int(cell_values[(37, 3)])
 region_name = cell_values[(11, 9)]
 region_stage = int(cell_values[(12, 9)])
 num_harvestables = int(cell_values[(24, 9)])
@@ -345,16 +346,19 @@ def choose_essences(region, stage, harvestableSpot):
 
 def simulate_population_activities():
     population_data = populationEstimateSheet.get_all_records()
+    
     #headers = population_data.pop(0)  # Remove header row
     population_sim_summary = [['Day','Segment','Population','Total Crypton Spent','Runs','AB Runs','BS Runs','CW Runs','S0 Runs','S1 Runs','S2 Runs','S3 Runs','Mines','GeodyneDeposit','LazuriteDeposit','BismuthDeposit','SeismicQuartz','TectonicNeovite','HelioAgate','Ores Extracted','T0 Ores','T1 Ores','T2 Ores','T3 Ores','T4 Ores','T5 Ores','Shards','T0 Shards','T1 Shards','T2 Shards','T3 Shards','T4 Shards','T5 Shards','Gems','Water Gems','Earth Gems','Fire Gems','Nature Gems','Air Gems','Osvium','Rhodivium','Lithvium','Chrovium','Pallavium','Gallvium','Vanavium','Tellvium','Rubivium','Irivium','Selenvium','Celestvium','ShardT0','ShardT1','ShardT2','ShardT3','ShardT4','ShardT5','WaterGemT0','WaterGemT1','WaterGemT2','WaterGemT3','WaterGemT4','WaterGemT5','EarthGemT0','EarthGemT1','EarthGemT2','EarthGemT3','EarthGemT4','EarthGemT5','FireGemT0','FireGemT1','FireGemT2','FireGemT3','FireGemT4','FireGemT5','NatureGemT0','NatureGemT1','NatureGemT2','NatureGemT3','NatureGemT4','NatureGemT5','AirGemT0','AirGemT1','AirGemT2','AirGemT3','AirGemT4','AirGemT5','Harvests','Clovium','NymphairBasket','Flintcap','Puffballs','StinkyFlora','WallPopper','GumboDandy','Ringshrooms','JellyFruit','Fruit','Essences','SpikeJuice_T0','SpikeJuice_T1','SpikeJuice_T2','SpikeJuice_T3','BasketFruit_T0','BasketFruit_T1','BasketFruit_T2','BasketFruit_T3','FlintCapCap_T0','FlintCapCap_T1','FlintCapCap_T2','FlintCapCap_T3','DragonEgg_T0','DragonEgg_T1','DragonEgg_T2','DragonEgg_T3','Floraball_T0','Floraball_T1','Floraball_T2','Floraball_T3','PopSpore_T0','PopSpore_T1','PopSpore_T2','PopSpore_T3','GumboBaby_T0','GumboBaby_T1','GumboBaby_T2','GumboBaby_T3','Ringnut_T0','Ringnut_T1','Ringnut_T2','Ringnut_T3','JellyfruitTendril_T0','JellyfruitTendril_T1','JellyfruitTendril_T2','JellyfruitTendril_T3','Sanguine','Bolstering','Lethargy','Growth','Agile','Vitality','Haste','Wrath','Guardian','Might','Fury','Ruination']]
 
     for segment_data in population_data:
         segment_name = segment_data['']
+        print("simulating " + segment_name)
 
         for day_key in tqdm(segment_data.items()):
             day = ""
             total_crypton_spent = 0
             runs = 0
+            encounterResults = None
             populationCount = 0
             population = 0
             extractionsCount = 0
@@ -459,11 +463,15 @@ def simulate_population_activities():
                                 essenceResult_counts[extraction['BonusEssenceExtracted']] += 1
 
 
-                    
+                    shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
                      # ILLUVIAL ENCOUTNERS DON"T REMOVE
-                    encounterResults = publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts)
+                    newEncounterResults = publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts)
+                    if encounterResults is None:
+                        encounterResults = newEncounterResults
+                    else: 
+                        encounterResults = accumulate_encounter_results(encounterResults, newEncounterResults)
 
-                    # Calcualte IlluvialCounts
+                    # Calcualte IlluvialCounts for BondingCurve
                     captured_illuvials = encounterResults[1].split(', ')  # Split the string to get individual Illuvials
                     for illuvial in captured_illuvials:
                         illuvial_dict = next((item for item in illuvialsCounts if item['Production_ID'] == illuvial), None)
@@ -537,7 +545,8 @@ def simulate_population_activities():
             if day_key[0] != '':  # Skip the segment name
                 simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                  sum(mineableCounts), sum(t0ORECounts), sum(t1ORECounts),sum(t2ORECounts),sum(t3ORECounts),sum(t4ORECounts),sum(t5ORECounts), sum(shardCountsVals), 
-                                 *shardCountsVals, sum(gemCountsVals), *mineableCounts, harvestsCount, *harvestsCountsVals, sum(harvestResultCountsVals), sum(essenceResultCountsVals), *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults]
+                                 *shardCountsVals, sum(gemCountsVals), *mineableCounts, harvestsCount, *harvestsCountsVals, sum(harvestResultCountsVals), sum(essenceResultCountsVals), 
+                                 *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults]
                 population_sim_summary.append(simDayData)
             
 
@@ -551,6 +560,18 @@ def simulate_population_activities():
         print(f"fucked")
     populationSimSheet.update('A2', population_sim_summary, value_input_option='USER_ENTERED')
 
+def accumulate_encounter_results(results_list, new_results):
+    for i in range(len(new_results)):
+        # If the result item is a string, check it's not an empty space and concatenate it.
+        if isinstance(new_results[i], str) and new_results[i].strip():
+            if results_list[i]:  # if the current result list string is not empty
+                results_list[i] += ", " + new_results[i]
+            else:  # if the current result list string is empty (first iteration)
+                results_list[i] = new_results[i]
+        # If the result item is an integer, sum it.
+        elif isinstance(new_results[i], int):
+            results_list[i] += new_results[i]
+    return results_list
 
 def custom_sort(data):
     severity_mapping = {"Max": 1, "High": 2, "Moderate": 3, "Low": 4}

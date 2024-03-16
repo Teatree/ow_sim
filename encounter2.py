@@ -18,8 +18,7 @@ gc = gspread.authorize(credentials)
 num_runs = 10
 region_name = 'AB'
 region_stage = 1 
-energy_balance = 2500
-energy_per_encounter = 1250
+
 shardT0amount = 25
 shardT1amount = 25
 shardT2amount = 25
@@ -38,7 +37,6 @@ masterShardpower = 1000
 bonrdingcurve_values = {}
 numCaptureAttempts = 5
 num_encounters = 15
-
 
 # Helper Functions
 def load_sheet_data(sheet_name):
@@ -141,18 +139,19 @@ def load_capture_difficulties(sheet_name):
     sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
     return sheet.get_all_records()
 
-def calculate_capture_probability(capture_power, capture_difficulty):
+def calculate_capture_probability(capture_power, capture_difficulty, bonding_curve_value):
     overshoot = 1.1  # 110%
     curve_strength = 0.01  # 1%
     probability = overshoot / (1 + math.exp(-curve_strength * (capture_power - capture_difficulty)))
+    probability *= bonding_curve_value
     return probability
 
 def choose_shard(shard_amounts, chosen_tier):
     # Choose a random shard that has a non-zero amount
     if shard_amounts:
-        available_shards = [tier for tier, amount in shard_amounts.items() if int(amount) > 0 and tier == "shardT"+str(chosen_tier)]
+        available_shards = [tier for tier, amount in shard_amounts.items() if int(amount) > 0 and tier == "Shard T"+str(chosen_tier)]
         if not available_shards:
-            return None, None  # No shards available
+            return None, shard_amounts  # No shards available
         chosen_shard = available_shards[0]
 
         shard_amounts[str(chosen_shard)] -= 1  # Deduct one shard
@@ -213,17 +212,25 @@ def calc_synergy_thresholds(stacks: dict):
     return thresholds
 
 # Main Functions
-def simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, combined_illuvial_weights, illuvials_list, shard_amounts, shard_powers, capture_difficulties):
+def simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, combined_illuvial_weights, illuvials_list, 
+                        shard_amounts_vals, shard_powers, capture_difficulties, energy_per_encounter, illuvial_capture_counts, energy_balance):
     """Simulate encounters based on the provided parameters and probabilities."""
-    results = []
+    allEncountersInRegion = []
     encounter_illuvials = []
+    
+    illuvialCaptured = []
+    illuvialCapturedTiers = []
+    illuvialCapturedStages = []
+    shardsUsedForCapture = []
+
     encounter_index = 1  # Initialize encounter index
     target_power = get_target_power(region_stage, encounter_type) # init target power
 
     for run in range(1, num_runs + 1):
+        shard_amounts = shard_amounts_vals
         currentEnergy_balance = energy_balance
         # choose
-        
+
         encounter_index = 1
         
         for _ in range(num_encounters):
@@ -246,8 +253,8 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types_pro
                 total_mastery_points += int(illuvial_record['Mastery Points'])
                 total_power = total_mastery_points * (1 + synergy_bonus)
 
-                # Append Illuvial data to results with the same encounter_index for Illuvials in the same encounter
-                results.append([
+                # Append Illuvial data to allEncountersInRegion with the same encounter_index for Illuvials in the same encounter
+                allEncountersInRegion.append([
                     run,
                     region_name,
                     region_stage,
@@ -258,91 +265,57 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types_pro
                     illuvial_record['Tier'],
                     illuvial_record['Affinity'],
                     illuvial_record['Class'],
-                    illuvial_record['Mastery Points'],  # Placeholder, adjust as necessary
+                    illuvial_record['Mastery Points']
                 ])
-            # TODO: take all the illuvials in encounter results and try to capture them
-            # Iterate through results, add lines with capture
-            # Keep trying to capture until out of attempts or else out of shards
-            if encounter_index == chosen_encounter_index or encounter_index == chosen_encounter_index2:
+            encounter_index += 1
+ 
+                
+        # CAPTURING
+        win = random.random() < 0.8 # 80% win probability
+        if currentEnergy_balance > energy_per_encounter and win:
+            currentEnergy_balance -= energy_per_encounter
+            encounter_indices = list(set([encounter[3] for encounter in allEncountersInRegion]))
+            # choose encounter randomly
+            random_encounter_index = random.choice(encounter_indices) # yes this means that same encounter can be chosen twice, it's fine (it's not very likely)
+            # assign id and tier values
+            illuvialsToCapture = [encounter[5] for encounter in allEncountersInRegion if encounter[3] == random_encounter_index]
+            illuvialsToCaptureTiers = [encounter[7] for encounter in allEncountersInRegion if encounter[3] == random_encounter_index]
+            illuvialsToCaptureStages = [encounter[6] for encounter in allEncountersInRegion if encounter[3] == random_encounter_index]
+            
+            for index in range(len(illuvialsToCapture)):
                 captureAttempts = 0
-                doCapture = "Yes"
-                while doCapture == "Yes":
+                if shard_amounts:
+                    chosen_shard, shard_amounts = choose_shard(shard_amounts, illuvialsToCaptureTiers[index]) # ?
+                else:
+                    break
+                if chosen_shard:
                     captureAttempts += 1
-                    if shard_amounts:
-                        chosen_shard, shard_amounts = choose_shard(shard_amounts, illuvial_record['Tier'])
-                    else:
-                        doCapture = "No"
+                    # add chosen shard to list of shards
+                    shardsUsedForCapture.append(chosen_shard)
+                    shard_power = shard_powers[chosen_shard]
+                    capture_difficulty = get_capture_difficulty(capture_difficulties, illuvialsToCaptureTiers[index], illuvialsToCaptureStages[index]) 
+                    
+                    # count of illuvials (yes I know this is messy, but we have to calculate it everytime anyway)
+                    capture_counts_dict = {illuvial['Production_ID']: illuvial['CaptureCount'] for illuvial in illuvial_capture_counts}
+                    capture_count = capture_counts_dict.get(illuvialsToCapture[index], 0)
+                    bonding_curve_value = calculateBondingCurveValue(capture_count, illuvialsToCaptureStages[index], illuvialsToCaptureTiers[index])
+
+                    capture_probability = calculate_capture_probability(shard_power, capture_difficulty, bonding_curve_value)
+                    success = "Yes" if random.random() < capture_probability else "No"
+                    if captureAttempts >= numCaptureAttempts:
                         success = "No"
-                        results.append([
-                                run,
-                                region_name,
-                                region_stage,
-                                encounter_index,
-                                encounter_type,
-                                illuvial_record['Production_ID'],
-                                illuvial_record['Stage'],
-                                illuvial_record['Tier'],
-                                illuvial_record['Affinity'],
-                                illuvial_record['Class'],
-                                illuvial_record['Mastery Points'],
-                                captureAttempts,
-                                "No Shards :(",
-                                success
-                            ])
-                        break
-                    if chosen_shard:
-                        shard_power = shard_powers[chosen_shard]
-                        capture_difficulty = get_capture_difficulty(capture_difficulties, illuvial_record['Tier'], illuvial_record['Stage']) 
-                        capture_probability = calculate_capture_probability(shard_power, capture_difficulty)
-                        success = "Yes" if random.random() < capture_probability else "No"
-                        if captureAttempts >= numCaptureAttempts:
-                            doCapture = "No"
-                            success = "No"
-                            results.append([
-                                run,
-                                region_name,
-                                region_stage,
-                                encounter_index,
-                                encounter_type,
-                                illuvial_record['Production_ID'],
-                                illuvial_record['Stage'],
-                                illuvial_record['Tier'],
-                                illuvial_record['Affinity'],
-                                illuvial_record['Class'],
-                                illuvial_record['Mastery Points'],
-                                captureAttempts,
-                                chosen_shard,
-                                success
-                            ])
-                        if success == "Yes":
-                            results.append([
-                                run,
-                                region_name,
-                                region_stage,
-                                encounter_index,
-                                encounter_type,
-                                illuvial_record['Production_ID'],
-                                illuvial_record['Stage'],
-                                illuvial_record['Tier'],
-                                illuvial_record['Affinity'],
-                                illuvial_record['Class'],
-                                illuvial_record['Mastery Points'],
-                                captureAttempts,
-                                chosen_shard,
-                                success
-                            ])
-                            doCapture = "No" 
-                    else:
-                        # Handle case where no shard is available for capture attempt
-                        pass
-
-            encounter_index += 1  # Increment encounter index after adding all Illuvials for this encounter
+                    if success == "Yes":
+                        # Illuvial that was captured
+                        illuvialCaptured.append(illuvialsToCapture[index])
+                        illuvialCapturedTiers.append(illuvialsToCaptureTiers[index])
+                        illuvialCapturedStages.append(illuvialsToCaptureStages[index])
+                else:
+                    pass
     
-    return results
-
+    return illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture
 
 def write_to_sheet(sheet_name, data):
-    """Write the simulation results to the specified Google Sheet."""
+    """Write the simulation allEncountersInRegion to the specified Google Sheet."""
     sheet = gc.open_by_key(spreadsheet_key).worksheet(sheet_name)
     sheet.resize(rows=len(data) + 1, cols=len(data[0]) if data else 0)
     sheet.update('A2', data, value_input_option='USER_ENTERED')
@@ -361,15 +334,15 @@ illuvials_list = load_illuvials_list('IlluvialsList')
 capture_difficulties = load_capture_difficulties('Capture')
 
 # Shard details and powers
-shard_amounts = {
-    'shardT0': shardT0amount, 'shardT1': shardT1amount, 'shardT2': shardT2amount,
-    'shardT3': shardT3amount, 'shardT4': shardT4amount, 'shardT5': shardT5amount,
-    'masterShard': masterShardamount
-}
+#shard_amounts = {
+#    'Shard T0': shardT0amount, 'Shard T1': shardT1amount, 'Shard T2': shardT2amount,
+#    'Shard T3': shardT3amount, 'Shard T4': shardT4amount, 'Shard T5': shardT5amount,
+#    'Master Shard': masterShardamount
+#}
 shard_powers = {
-    'shardT0': shardT0power, 'shardT1': shardT1power, 'shardT2': shardT2power,
-    'shardT3': shardT3power, 'shardT4': shardT4power, 'shardT5': shardT5power,
-    'masterShard': masterShardpower
+    'Shard T0': shardT0power, 'Shard T1': shardT1power, 'Shard T2': shardT2power,
+    'Shard T3': shardT3power, 'Shard T4': shardT4power, 'Shard T5': shardT5power,
+    'Master Shard': masterShardpower
 }
 
 encounter_types_processed = [(record['Encounter'], record['Weight']) for record in encounter_types]
@@ -382,7 +355,7 @@ target_power = 0
 #quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
 #combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type)
 # Simulate Encounters
-#results = simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, illuvial_weights, illuvials_list)
+#allEncountersInRegion = simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, illuvial_weights, illuvials_list)
 
 # TEST RUN
 #simulationResults = simulate_encounters(
@@ -420,7 +393,8 @@ def publicSimulateResults (num_runs, region_name, region_stage, energyForEncount
         shard_amounts_values,
         shard_power_values, 
         capture_difficulties,
-        illuvial_capture_counts
+        illuvial_capture_counts,
+        energy_balance
     )
 
     write_to_sheet('EncounterSim', simulationResults)
@@ -434,7 +408,7 @@ def publicSimulateEncountersPopulation (num_runs, region_name, region_stage, ene
     quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
     combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type, illuvial_capture_counts)
 
-    simulationResults = simulate_encounters(
+    illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture = simulate_encounters(
         num_runs, 
         region_name, 
         region_stage, 
@@ -444,61 +418,35 @@ def publicSimulateEncountersPopulation (num_runs, region_name, region_stage, ene
         illuvials_list,
         shard_amounts_values,
         shard_power_values, 
-        capture_difficulties
+        capture_difficulties,
+        energy_per_encounter,
+        illuvial_capture_counts,
+        energy_balance
     )
 
-    aggregated_results = []
-    run_data = defaultdict(lambda: defaultdict(int))
-    illuvials_per_run = defaultdict(list)
+    # Calculating sums and counts
+    sum_illuvialCaptured = len(illuvialCaptured)
+    sum_shardsUsedForCapture = len(shardsUsedForCapture)
 
-    # Iterate over the simulationResults
-    for result in simulationResults:
-        run_number = result[0]
-        illuvial_name = result[5]
-        tier = result[6]
-        stage = result[7]
-        if len(result) > 11 and result[11]:
-            shards_used = result[11]
-        else:
-            shards_used = 0
+    # Joining lists into strings
+    illuvialCaptured_str = ", ".join(illuvialCaptured) # can't use this because of 50000 chars in cell limit
+    shardsUsedForCapture_str = ", ".join(shardsUsedForCapture) # can't use this because of 50000 chars in cell limit
 
-        # Increment Illuvials Captured
-        run_data[run_number]['Illuvials Captured'] += 1
-        illuvials_per_run[run_number].append(illuvial_name)
-        run_data[run_number][f'T{tier} Illuvials'] += 1
-        run_data[run_number][f'S{stage} Illuvials'] += 1
-        run_data[run_number]['Shards Used'] += int(shards_used)
+    # Counting occurrences of each Tier and Stage
+    tier_counts = {f"T{tier}": illuvialCapturedTiers.count(str(tier)) for tier in range(6)}  # Tiers T0-T5
+    stage_counts = {f"S{stage}": illuvialCapturedStages.count(str(stage)) for stage in range(1, 4)}  # Stages S1-S3
 
-    # Convert the temporary dictionary to a list of dictionaries with required information
-    for run_number, data in run_data.items():
-        data['Illuvials'] = ', '.join(illuvials_per_run[run_number])
-        aggregated_results.append(data)
+    # Building the final list containing the required information
+    result = [
+        sum_illuvialCaptured,
+        "illuvialCaptured_str",
+        tier_counts["T0"], tier_counts["T1"], tier_counts["T2"], tier_counts["T3"], tier_counts["T4"], tier_counts["T5"],
+        stage_counts["S1"], stage_counts["S2"], stage_counts["S3"], 
+        "shardsUsedForCapture_str",
+        sum_shardsUsedForCapture
+    ]
 
-    sorted_aggregated_results = sorted(aggregated_results, key=custom_sort)
-
-    sorted_keys = ['Illuvials Captured', 'Illuvials', 'T0 Illuvials', 'T1 Illuvials', 'T2 Illuvials', 'T3 Illuvials', 'T4 Illuvials', 'T5 Illuvials', 'S1 Illuvials', 'S3 Illuvials', 'S3 Illuvials', 'Shards Used']  # and so on for all keys
-    values_only_sorted_aggregated_results = [list(map(item.get, sorted_keys)) for item in sorted_aggregated_results]
-
-    # Replace 'None' with '0' for summation
-    cleaned_results = [[0 if v is None else v for v in sublist] for sublist in values_only_sorted_aggregated_results]
-
-    summed_results = []
-    # Sum the values by their respective positions using zip and sum
-    for values in zip(*cleaned_results):
-        strings = [v for v in values if isinstance(v, str)]
-        non_strings = [v for v in values if not isinstance(v, str)]
-
-        summed_non_strings = sum(non_strings) if non_strings else 0
-        joined_strings = ', '.join(strings) if strings else ''
-
-        if strings and non_strings:
-            summed_results.append((summed_non_strings, joined_strings))
-        elif strings:
-            summed_results.append(joined_strings)
-        else:
-            summed_results.append(summed_non_strings)
-
-    return summed_results
+    return result
 
 def custom_sort(item):
     return (item['run_number'], item['illuvial_name'], item['T0 Illuvials'], item['T1 Illuvials'])  # Add the rest of your tier keys
