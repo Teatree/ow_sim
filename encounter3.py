@@ -5,7 +5,6 @@ import math
 import pandas as pd
 import numpy as np
 from collections import defaultdict
-from bondingCurveCalc import calculateBondingCurveValue
 
 # Setup and Authorization
 scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
@@ -35,7 +34,6 @@ shardT4power = 400
 shardT5power = 500
 masterShardpower = 1000
 
-bonrdingcurve_values = {}
 numCaptureAttempts = 5
 num_encounters = 15
 
@@ -60,31 +58,18 @@ def load_illuvial_weights(sheet_name):
     return weights
 
 # Function to calculate combined weights for Illuvials
-def calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region, stage, encounter_type, illuvial_capture_counts):
+def calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region, stage, encounter_type):
     combined_weights = []
-
-    capture_counts_dict = {illuvial['Production_ID']: illuvial['CaptureCount'] for illuvial in illuvial_capture_counts}
-
-    
     for illuvial in illuvials_list:
-        production_id = illuvial['Production_ID']
-        if production_id == 'Production_ID':
-            continue
-
         # Fetch the individual weights for Stage, Tier, Affinity, and Class from the weights table
         stage_weight = illuvial_weights[(region, stage, encounter_type)]['Stage'].get('S' + str(illuvial['Stage']), 0)
         tier_weight = illuvial_weights[(region, stage, encounter_type)]['Tier'].get('T' + str(illuvial['Tier']), 0)
         affinity_weight = illuvial_weights[(region, stage, encounter_type)]['Affinity'].get(illuvial['Affinity'], 0)
         class_weight = illuvial_weights[(region, stage, encounter_type)]['Class'].get(illuvial['Class'], 0)
         
-        capture_count = capture_counts_dict.get(production_id, 0)
-        bonding_curve_value = calculateBondingCurveValue(capture_count, illuvial.get('Stage'), illuvial.get('Tier'))
-        
-        # TODO: Iterate here and see if the list of bonding curves contains 
-        
         # Calculate combined weight and append it along with the illuvial's Production_ID
         if stage_weight and tier_weight and affinity_weight and class_weight:  # Ensure no zero weights
-            combined_weight = stage_weight * tier_weight * affinity_weight * class_weight * bonding_curve_value
+            combined_weight = stage_weight * tier_weight * affinity_weight * class_weight
             combined_weights.append((illuvial['Production_ID'], combined_weight))
     #print("combined_weights: " + str(combined_weights))
     return combined_weights
@@ -125,14 +110,11 @@ def load_illuvials_list(sheet_name):
 def get_weighted_choice(options):
     """Given a list of tuples [(illuvial_identifier, combined_weight)], return an identifier based on the weighted probability."""
     identifiers, weights = zip(*options)
-
-
     total = sum(weights)
     r = random.uniform(0, total)
     upto = 0
     for identifier, weight in zip(identifiers, weights):
         if upto + weight >= r:
-            # TODO: Add probability of HOLO or DARK HOLO
             return identifier
         upto += weight
     assert False, "Shouldn't get here"
@@ -213,7 +195,7 @@ def calc_synergy_thresholds(stacks: dict):
     return thresholds
 
 # Main Functions
-def simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, combined_illuvial_weights, illuvials_list, shard_amounts, shard_powers, capture_difficulties):
+def simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, illuvial_weights, illuvials_list, shard_amounts, shard_powers, capture_difficulties):
     """Simulate encounters based on the provided parameters and probabilities."""
     results = []
     encounter_illuvials = []
@@ -222,13 +204,17 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types_pro
 
     for run in range(1, num_runs + 1):
         currentEnergy_balance = energy_balance
-        # choose
-        
+        chosen_encounter_index = random.randint(1, num_encounters) 
+        chosen_encounter_index2 = random.randint(1, num_encounters) 
+
         encounter_index = 1
         
         for _ in range(num_encounters):
             # Determine the number of Illuvials in this encounter
             # num_illuvials_in_encounter = get_weighted_choice(quantity_weights_processed)  # This needs to be adjusted if quantity_weights_processed structure changes
+            
+            if encounter_index == chosen_encounter_index or encounter_index == chosen_encounter_index2:
+                currentEnergy_balance -= energy_per_encounter  # Deduct energy spent on this encounter
 
             total_power = 0
             total_mastery_points = 0
@@ -247,94 +233,93 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types_pro
                 total_power = total_mastery_points * (1 + synergy_bonus)
 
                 # Append Illuvial data to results with the same encounter_index for Illuvials in the same encounter
-                results.append([
-                    run,
-                    region_name,
-                    region_stage,
-                    encounter_index,
-                    encounter_type,
-                    illuvial_record['Production_ID'],
-                    illuvial_record['Stage'],
-                    illuvial_record['Tier'],
-                    illuvial_record['Affinity'],
-                    illuvial_record['Class'],
-                    illuvial_record['Mastery Points'],  # Placeholder, adjust as necessary
-                ])
-            # TODO: take all the illuvials in encounter results and try to capture them
-            # Iterate through results, add lines with capture
-            # Keep trying to capture until out of attempts or else out of shards
-            if encounter_index == chosen_encounter_index or encounter_index == chosen_encounter_index2:
-                captureAttempts = 0
-                doCapture = "Yes"
-                while doCapture == "Yes":
-                    captureAttempts += 1
-                    if shard_amounts:
-                        chosen_shard, shard_amounts = choose_shard(shard_amounts, illuvial_record['Tier'])
-                    else:
-                        doCapture = "No"
-                        success = "No"
-                        results.append([
-                                run,
-                                region_name,
-                                region_stage,
-                                encounter_index,
-                                encounter_type,
-                                illuvial_record['Production_ID'],
-                                illuvial_record['Stage'],
-                                illuvial_record['Tier'],
-                                illuvial_record['Affinity'],
-                                illuvial_record['Class'],
-                                illuvial_record['Mastery Points'],
-                                captureAttempts,
-                                "No Shards :(",
-                                success
-                            ])
-                        break
-                    if chosen_shard:
-                        shard_power = shard_powers[chosen_shard]
-                        capture_difficulty = get_capture_difficulty(capture_difficulties, illuvial_record['Tier'], illuvial_record['Stage']) 
-                        capture_probability = calculate_capture_probability(shard_power, capture_difficulty)
-                        success = "Yes" if random.random() < capture_probability else "No"
-                        if captureAttempts >= numCaptureAttempts:
+                if encounter_index == chosen_encounter_index or encounter_index == chosen_encounter_index2:
+                    captureAttempts = 0
+                    doCapture = "Yes"
+                    while doCapture == "Yes":
+                        captureAttempts += 1
+                        if shard_amounts:
+                            chosen_shard, shard_amounts = choose_shard(shard_amounts, illuvial_record['Tier'])
+                        else:
                             doCapture = "No"
                             success = "No"
                             results.append([
-                                run,
-                                region_name,
-                                region_stage,
-                                encounter_index,
-                                encounter_type,
-                                illuvial_record['Production_ID'],
-                                illuvial_record['Stage'],
-                                illuvial_record['Tier'],
-                                illuvial_record['Affinity'],
-                                illuvial_record['Class'],
-                                illuvial_record['Mastery Points'],
-                                captureAttempts,
-                                chosen_shard,
-                                success
-                            ])
-                        if success == "Yes":
-                            results.append([
-                                run,
-                                region_name,
-                                region_stage,
-                                encounter_index,
-                                encounter_type,
-                                illuvial_record['Production_ID'],
-                                illuvial_record['Stage'],
-                                illuvial_record['Tier'],
-                                illuvial_record['Affinity'],
-                                illuvial_record['Class'],
-                                illuvial_record['Mastery Points'],
-                                captureAttempts,
-                                chosen_shard,
-                                success
-                            ])
-                            doCapture = "No" 
-                    else:
-                        # Handle case where no shard is available for capture attempt
-                        pass
+                                    run,
+                                    region_name,
+                                    region_stage,
+                                    encounter_index,
+                                    encounter_type,
+                                    illuvial_record['Production_ID'],
+                                    illuvial_record['Stage'],
+                                    illuvial_record['Tier'],
+                                    illuvial_record['Affinity'],
+                                    illuvial_record['Class'],
+                                    illuvial_record['Mastery Points'],
+                                    captureAttempts,
+                                    "No Shards :(",
+                                    success
+                                ])
+                            break
+                        if chosen_shard:
+                            shard_power = shard_powers[chosen_shard]
+                            capture_difficulty = get_capture_difficulty(capture_difficulties, illuvial_record['Tier'], illuvial_record['Stage']) 
+                            capture_probability = calculate_capture_probability(shard_power, capture_difficulty)
+                            success = "Yes" if random.random() < capture_probability else "No"
+                            if captureAttempts >= numCaptureAttempts:
+                                doCapture = "No"
+                                success = "No"
+                                results.append([
+                                    run,
+                                    region_name,
+                                    region_stage,
+                                    encounter_index,
+                                    encounter_type,
+                                    illuvial_record['Production_ID'],
+                                    illuvial_record['Stage'],
+                                    illuvial_record['Tier'],
+                                    illuvial_record['Affinity'],
+                                    illuvial_record['Class'],
+                                    illuvial_record['Mastery Points'],
+                                    captureAttempts,
+                                    chosen_shard,
+                                    success
+                                ])
+                            if success == "Yes":
+                                results.append([
+                                    run,
+                                    region_name,
+                                    region_stage,
+                                    encounter_index,
+                                    encounter_type,
+                                    illuvial_record['Production_ID'],
+                                    illuvial_record['Stage'],
+                                    illuvial_record['Tier'],
+                                    illuvial_record['Affinity'],
+                                    illuvial_record['Class'],
+                                    illuvial_record['Mastery Points'],
+                                    captureAttempts,
+                                    chosen_shard,
+                                    success
+                                ])
+                                doCapture = "No" 
+                        else:
+                            # Handle case where no shard is available for capture attempt
+                            pass
+                else:
+                    results.append([
+                        run,
+                        region_name,
+                        region_stage,
+                        encounter_index,
+                        encounter_type,
+                        illuvial_record['Production_ID'],
+                        illuvial_record['Stage'],
+                        illuvial_record['Tier'],
+                        illuvial_record['Affinity'],
+                        illuvial_record['Class'],
+                        illuvial_record['Mastery Points'],  # Placeholder, adjust as necessary
+                    ])
+                    
 
             encounter_index += 1  # Increment encounter index after adding all Illuvials for this encounter
     
@@ -379,30 +364,30 @@ encounter_type = get_weighted_choice(encounter_types_processed)
 target_power = 0
 
 
-#quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
-#combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type)
+quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
+combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type)
 # Simulate Encounters
 #results = simulate_encounters(num_runs, region_name, region_stage, encounter_types_processed, quantity_weights_processed, illuvial_weights, illuvials_list)
 
-# TEST RUN
-#simulationResults = simulate_encounters(
-    #num_runs, 
-    #region_name, 
-    #region_stage, 
-    #encounter_types_processed, 
-    #quantity_weights_processed, 
-    #combined_illuvial_weights, 
-    #illuvials_list,
-    #shard_amounts,
-    #shard_powers, 
-    #capture_difficulties,
-    #illuvial_capture_counts
-#)
 
-#write_to_sheet('EncounterSim', simulationResults)
+simulationResults = simulate_encounters(
+    num_runs, 
+    region_name, 
+    region_stage, 
+    encounter_types_processed, 
+    quantity_weights_processed, 
+    combined_illuvial_weights, 
+    illuvials_list,
+    shard_amounts,
+    shard_powers, 
+    capture_difficulties
+)
+
+# Write results to 'EncounterSim' sheet
+write_to_sheet('EncounterSim', simulationResults)
 
 
-def publicSimulateResults (num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, illuvial_capture_counts):
+def publicSimulateResults (num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values):
     num_runs = num_runs
     region_name = region_name
     region_stage = region_stage
@@ -419,20 +404,17 @@ def publicSimulateResults (num_runs, region_name, region_stage, energyForEncount
         illuvials_list,
         shard_amounts_values,
         shard_power_values, 
-        capture_difficulties,
-        illuvial_capture_counts
+        capture_difficulties
     )
 
     write_to_sheet('EncounterSim', simulationResults)
 
-def publicSimulateEncountersPopulation (num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, illuvial_capture_counts):
+def publicSimulateEncountersPopulation (num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values):
     num_runs = num_runs
     region_name = region_name
     region_stage = region_stage
     energy_balance = energyForEncounter
     energy_per_encounter = energy_cost_per_encounter
-    quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
-    combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type, illuvial_capture_counts)
 
     simulationResults = simulate_encounters(
         num_runs, 
@@ -476,27 +458,15 @@ def publicSimulateEncountersPopulation (num_runs, region_name, region_stage, ene
 
     sorted_aggregated_results = sorted(aggregated_results, key=custom_sort)
 
-    sorted_keys = ['Illuvials Captured', 'Illuvials', 'T0 Illuvials', 'T1 Illuvials', 'T2 Illuvials', 'T3 Illuvials', 'T4 Illuvials', 'T5 Illuvials', 'S1 Illuvials', 'S3 Illuvials', 'S3 Illuvials', 'Shards Used']  # and so on for all keys
+    sorted_keys = ['Illuvials Captured', 'illuvial_name', 'T0 Illuvials', 'T1 Illuvials', 'T2 Illuvials', 'T3 Illuvials', 'T4 Illuvials', 'T5 Illuvials', 'S1 Illuvials', 'S3 Illuvials', 'S3 Illuvials', 'Shards Used'] 
     values_only_sorted_aggregated_results = [list(map(item.get, sorted_keys)) for item in sorted_aggregated_results]
 
     # Replace 'None' with '0' for summation
     cleaned_results = [[0 if v is None else v for v in sublist] for sublist in values_only_sorted_aggregated_results]
+    summed_values = [sum(values) for values in zip(*cleaned_results)]
 
-    summed_results = []
     # Sum the values by their respective positions using zip and sum
-    for values in zip(*cleaned_results):
-        strings = [v for v in values if isinstance(v, str)]
-        non_strings = [v for v in values if not isinstance(v, str)]
-
-        summed_non_strings = sum(non_strings) if non_strings else 0
-        joined_strings = ', '.join(strings) if strings else ''
-
-        if strings and non_strings:
-            summed_results.append((summed_non_strings, joined_strings))
-        elif strings:
-            summed_results.append(joined_strings)
-        else:
-            summed_results.append(summed_non_strings)
+    summed_results = dict(zip(sorted_keys, summed_values))
 
     return summed_results
 

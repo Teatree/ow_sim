@@ -347,59 +347,65 @@ def simulate_population_activities():
     population_data = populationEstimateSheet.get_all_records()
     #headers = population_data.pop(0)  # Remove header row
     population_sim_summary = [['Day','Segment','Population','Total Crypton Spent','Runs','AB Runs','BS Runs','CW Runs','S0 Runs','S1 Runs','S2 Runs','S3 Runs','Mines','GeodyneDeposit','LazuriteDeposit','BismuthDeposit','SeismicQuartz','TectonicNeovite','HelioAgate','Ores Extracted','T0 Ores','T1 Ores','T2 Ores','T3 Ores','T4 Ores','T5 Ores','Shards','T0 Shards','T1 Shards','T2 Shards','T3 Shards','T4 Shards','T5 Shards','Gems','Water Gems','Earth Gems','Fire Gems','Nature Gems','Air Gems','Osvium','Rhodivium','Lithvium','Chrovium','Pallavium','Gallvium','Vanavium','Tellvium','Rubivium','Irivium','Selenvium','Celestvium','ShardT0','ShardT1','ShardT2','ShardT3','ShardT4','ShardT5','WaterGemT0','WaterGemT1','WaterGemT2','WaterGemT3','WaterGemT4','WaterGemT5','EarthGemT0','EarthGemT1','EarthGemT2','EarthGemT3','EarthGemT4','EarthGemT5','FireGemT0','FireGemT1','FireGemT2','FireGemT3','FireGemT4','FireGemT5','NatureGemT0','NatureGemT1','NatureGemT2','NatureGemT3','NatureGemT4','NatureGemT5','AirGemT0','AirGemT1','AirGemT2','AirGemT3','AirGemT4','AirGemT5','Harvests','Clovium','NymphairBasket','Flintcap','Puffballs','StinkyFlora','WallPopper','GumboDandy','Ringshrooms','JellyFruit','Fruit','Essences','SpikeJuice_T0','SpikeJuice_T1','SpikeJuice_T2','SpikeJuice_T3','BasketFruit_T0','BasketFruit_T1','BasketFruit_T2','BasketFruit_T3','FlintCapCap_T0','FlintCapCap_T1','FlintCapCap_T2','FlintCapCap_T3','DragonEgg_T0','DragonEgg_T1','DragonEgg_T2','DragonEgg_T3','Floraball_T0','Floraball_T1','Floraball_T2','Floraball_T3','PopSpore_T0','PopSpore_T1','PopSpore_T2','PopSpore_T3','GumboBaby_T0','GumboBaby_T1','GumboBaby_T2','GumboBaby_T3','Ringnut_T0','Ringnut_T1','Ringnut_T2','Ringnut_T3','JellyfruitTendril_T0','JellyfruitTendril_T1','JellyfruitTendril_T2','JellyfruitTendril_T3','Sanguine','Bolstering','Lethargy','Growth','Agile','Vitality','Haste','Wrath','Guardian','Might','Fury','Ruination']]
+    totalIlluvialCaptures = []
 
     for segment_data in population_data:
         segment_name = segment_data['']
+        # if day_key[0] != '':  # Skip the segment name
+        #         population = day_key[1]
+        #         day = day_key[0]
+        populationCount_t = 0
+        while populationCount_t < 5000:
+            populationCount_t += 1
+            #Create shards dict
+            for day_key in segment_data.items():
+                if day_key[0] != '':  # Skip the segment name
+                    populationCount = day_key[1]
+                    day = day_key[0]
 
-        for day_key in tqdm(segment_data.items()):
-            day = ""
-            total_crypton_spent = 0
-            runs = 0
-            populationCount = 0
-            population = 0
-            extractionsCount = 0
-            harvestsCount = 0
-            deposits = []
-            harvests = []
-            deposit_counts = {'GeodyneDeposit': 0,'LazuriteDeposit': 0,'BismuthDeposit': 0,'SeismicQuartz': 0,'TectonicNeovite': 0,'HelioAgate': 0}
-            harvests_counts = {'Clovium': 0,'NymphairBasket': 0,'Flintcap':0, 'Puffballs': 0,'StinkyFlora': 0,'WallPopper': 0,'GumboDandy': 0,'Ringshrooms': 0,'JellyFruit': 0}
-            harvestResults = []
-            harvestResult_counts = {'SpikeJuice_T0': 0,'SpikeJuice_T1': 0,'SpikeJuice_T2': 0,'SpikeJuice_T3': 0,'BasketFruit_T0': 0,'BasketFruit_T1': 0,'BasketFruit_T2': 0,'BasketFruit_T3': 0,'FlintCapCap_T0': 0,'FlintCapCap_T1': 0,'FlintCapCap_T2': 0,'FlintCapCap_T3': 0,'DragonEgg_T0': 0,'DragonEgg_T1': 0,'DragonEgg_T2': 0,'DragonEgg_T3': 0,'Floraball_T0': 0,'Floraball_T1': 0,'Floraball_T2': 0,'Floraball_T3': 0,'PopSpore_T0': 0,'PopSpore_T1': 0,'PopSpore_T2': 0,'PopSpore_T3': 0,'GumboBaby_T0': 0,'GumboBaby_T1': 0,'GumboBaby_T2': 0,'GumboBaby_T3': 0,'Ringnut_T0': 0,'Ringnut_T1': 0,'Ringnut_T2': 0,'Ringnut_T3': 0,'JellyfruitTendril_T0': 0,'JellyfruitTendril_T1': 0,'JellyfruitTendril_T2': 0,'JellyfruitTendril_T3': 0}
-            essenceResult_counts = {"Sanguine": 0, "Bolstering": 0,"Lethargy": 0,"Growth": 0,"Agile": 0,"Vitality": 0,"Haste": 0,"Wrath": 0,"Guardian": 0,"Might": 0,"Fury": 0,"Ruination": 0}
-            mineables = []
-            mineablesT0 = ['Osvium','Rhodivium']
-            mineablesT1 = ['Lithvium','Chrovium']
-            mineablesT2 = ['Pallavium','Gallvium']
-            mineablesT3 = ['Vanavium','Tellvium']
-            mineablesT4 = ['Rubivium','Irivium']
-            mineablesT5 = ['Selenvium','Celestvium']
-            shardTypeCounts = ['ShardT0','ShardT1','ShardT2','ShardT3','ShardT4','ShardT5']
-            gemsTypeCounts = ['WaterGemT0','WaterGemT1','WaterGemT2','WaterGemT3','WaterGemT4','WaterGemT5','EarthGemT0','EarthGemT1','EarthGemT2','EarthGemT3','EarthGemT4','EarthGemT5','FireGemT0','FireGemT1','FireGemT2','FireGemT3','FireGemT4','FireGemT5','NatureGemT0','NatureGemT1','NatureGemT2','NatureGemT3','NatureGemT4','NatureGemT5','AirGemT0','AirGemT1','AirGemT2','AirGemT3','AirGemT4','AirGemT5']
-            mineable_counts = {'Osvium':0,'Rhodivium':0,'Lithvium':0,'Chrovium':0,'Pallavium':0,'Gallvium':0,'Vanavium':0,'Tellvium':0,'Rubivium':0,'Irivium':0,'Selenvium':0,'Celestvium':0,'ShardT0':0,'ShardT1':0,'ShardT2':0,'ShardT3':0,'ShardT4':0,'ShardT5':0,'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
-            t0oresCounts = {'Osvium': 0,'Rhodivium': 0}
-            t1oresCounts = {'Lithvium': 0,'Chrovium': 0}
-            t2oresCounts = {'Pallavium':0,'Gallvium':0}
-            t3oresCounts = {'Vanavium':0,'Tellvium':0}
-            t4oresCounts = {'Rubivium':0,'Irivium':0}
-            t5oresCounts = {'Selenvium':0,'Celestvium':0}
-            shardCounts = {'ShardT0':0,'ShardT1':0,'ShardT2':0,'ShardT3':0,'ShardT4':0,'ShardT5':0}
-            gemsCounts = {'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
-            regionsAB = 0
-            regionsBS = 0
-            regionsCW = 0
-            regionsS0 = 0
-            regionsS1 = 0
-            regionsS2 = 0
-            regionsS3 = 0
+                    populationCount -= 1
+                    if populationCount <= 0: 
+                        break
+                    day = ""
+                    total_crypton_spent = 0
+                    runs = 0
+                    # populationCount = 0
+                    population = 0
+                    extractionsCount = 0
+                    harvestsCount = 0
+                    deposits = []
+                    harvests = []
+                    deposit_counts = {'GeodyneDeposit': 0,'LazuriteDeposit': 0,'BismuthDeposit': 0,'SeismicQuartz': 0,'TectonicNeovite': 0,'HelioAgate': 0}
+                    harvests_counts = {'Clovium': 0,'NymphairBasket': 0,'Flintcap':0, 'Puffballs': 0,'StinkyFlora': 0,'WallPopper': 0,'GumboDandy': 0,'Ringshrooms': 0,'JellyFruit': 0}
+                    harvestResults = []
+                    harvestResult_counts = {'SpikeJuice_T0': 0,'SpikeJuice_T1': 0,'SpikeJuice_T2': 0,'SpikeJuice_T3': 0,'BasketFruit_T0': 0,'BasketFruit_T1': 0,'BasketFruit_T2': 0,'BasketFruit_T3': 0,'FlintCapCap_T0': 0,'FlintCapCap_T1': 0,'FlintCapCap_T2': 0,'FlintCapCap_T3': 0,'DragonEgg_T0': 0,'DragonEgg_T1': 0,'DragonEgg_T2': 0,'DragonEgg_T3': 0,'Floraball_T0': 0,'Floraball_T1': 0,'Floraball_T2': 0,'Floraball_T3': 0,'PopSpore_T0': 0,'PopSpore_T1': 0,'PopSpore_T2': 0,'PopSpore_T3': 0,'GumboBaby_T0': 0,'GumboBaby_T1': 0,'GumboBaby_T2': 0,'GumboBaby_T3': 0,'Ringnut_T0': 0,'Ringnut_T1': 0,'Ringnut_T2': 0,'Ringnut_T3': 0,'JellyfruitTendril_T0': 0,'JellyfruitTendril_T1': 0,'JellyfruitTendril_T2': 0,'JellyfruitTendril_T3': 0}
+                    essenceResult_counts = {"Sanguine": 0, "Bolstering": 0,"Lethargy": 0,"Growth": 0,"Agile": 0,"Vitality": 0,"Haste": 0,"Wrath": 0,"Guardian": 0,"Might": 0,"Fury": 0,"Ruination": 0}
+                    mineables = []
+                    mineablesT0 = ['Osvium','Rhodivium']
+                    mineablesT1 = ['Lithvium','Chrovium']
+                    mineablesT2 = ['Pallavium','Gallvium']
+                    mineablesT3 = ['Vanavium','Tellvium']
+                    mineablesT4 = ['Rubivium','Irivium']
+                    mineablesT5 = ['Selenvium','Celestvium']
+                    shardTypeCounts = ['ShardT0','ShardT1','ShardT2','ShardT3','ShardT4','ShardT5']
+                    gemsTypeCounts = ['WaterGemT0','WaterGemT1','WaterGemT2','WaterGemT3','WaterGemT4','WaterGemT5','EarthGemT0','EarthGemT1','EarthGemT2','EarthGemT3','EarthGemT4','EarthGemT5','FireGemT0','FireGemT1','FireGemT2','FireGemT3','FireGemT4','FireGemT5','NatureGemT0','NatureGemT1','NatureGemT2','NatureGemT3','NatureGemT4','NatureGemT5','AirGemT0','AirGemT1','AirGemT2','AirGemT3','AirGemT4','AirGemT5']
+                    mineable_counts = {'Osvium':0,'Rhodivium':0,'Lithvium':0,'Chrovium':0,'Pallavium':0,'Gallvium':0,'Vanavium':0,'Tellvium':0,'Rubivium':0,'Irivium':0,'Selenvium':0,'Celestvium':0,'ShardT0':0,'ShardT1':0,'ShardT2':0,'ShardT3':0,'ShardT4':0,'ShardT5':0,'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
+                    t0oresCounts = {'Osvium': 0,'Rhodivium': 0}
+                    t1oresCounts = {'Lithvium': 0,'Chrovium': 0}
+                    t2oresCounts = {'Pallavium':0,'Gallvium':0}
+                    t3oresCounts = {'Vanavium':0,'Tellvium':0}
+                    t4oresCounts = {'Rubivium':0,'Irivium':0}
+                    t5oresCounts = {'Selenvium':0,'Celestvium':0}
+                    shardCounts = {'ShardT0':0,'ShardT1':0,'ShardT2':0,'ShardT3':0,'ShardT4':0,'ShardT5':0}
+                    gemsCounts = {'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
+                    regionsAB = 0
+                    regionsBS = 0
+                    regionsCW = 0
+                    regionsS0 = 0
+                    regionsS1 = 0
+                    regionsS2 = 0
+                    regionsS3 = 0
 
-
-            if day_key[0] != '':  # Skip the segment name
-                population = day_key[1]
-                day = day_key[0]
-                
-                while populationCount < population:
-                    populationCount += 1
-                    
                     if segment_name == "Max": 
                         num_runs = random.choices(runs_weighted_types, weights=max_runs_weighted_values)[0]
                         region_name = random.choices(region_weighted_types, weights=max_region_weighted_values)[0]
@@ -461,95 +467,95 @@ def simulate_population_activities():
 
                     
                      # ILLUVIAL ENCOUTNERS DON"T REMOVE
-                    encounterResults = publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts)
+                    #encounterResults = publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts)
 
                     # Calcualte IlluvialCounts
-                    captured_illuvials = encounterResults[1].split(', ')  # Split the string to get individual Illuvials
-                    for illuvial in captured_illuvials:
-                        illuvial_dict = next((item for item in illuvialsCounts if item['Production_ID'] == illuvial), None)
-                        if illuvial_dict is not None:
-                            illuvial_dict['CaptureCount'] += 1
+                    #captured_illuvials = encounterResults[1].split(', ')  # Split the string to get individual Illuvials
+                    #for illuvial in captured_illuvials:
+                        #illuvial_dict = next((item for item in illuvialsCounts if item['Production_ID'] == illuvial), None)
+                        #if illuvial_dict is not None:
+                            #illuvial_dict['CaptureCount'] += 1
             
-            ##print("OUTPUT:" + str(harvesting_data_for_writing))
-                # calculate deposits
-                for d in deposits:
-                    if d in deposit_counts:
-                        deposit_counts[d] += 1
-                    else:
-                        deposit_counts[d] = 1
-                # calculate mineables
-                #mineables 
-                for m in mineables:
-                    if m in mineable_counts:
-                        mineable_counts[m] += 1
-                        if m in mineablesT0:
-                            t0oresCounts[m] += 1
-                        if m in mineablesT1:
-                            t1oresCounts[m] += 1
-                        if m in mineablesT2:
-                            t2oresCounts[m] += 1
-                        if m in mineablesT3:
-                            t3oresCounts[m] += 1
-                        if m in mineablesT4:
-                            t4oresCounts[m] += 1
-                        if m in mineablesT5:
-                            t5oresCounts[m] += 1
-                        if m in shardTypeCounts:
-                            shardCounts[m] += 1
-                        if m in gemsTypeCounts:
-                            gemsCounts[m] += 1
-                    #else:
-                        #mineable_counts[m] = 0
-                            
-                # calculate harvestables
-                for d in harvests:
-                    d = d.replace('_Stage0', '')
-                    d = d.replace('_Stage1', '')
-                    d = d.replace('_Stage2', '')
-                    d = d.replace('_Stage3', '')
-                    if d in harvests_counts:
-                        harvests_counts[d] += 1
-                    else:
-                        harvests_counts[d] = 1
+                ##print("OUTPUT:" + str(harvesting_data_for_writing))
+                    # calculate deposits
+                    for d in deposits:
+                        if d in deposit_counts:
+                            deposit_counts[d] += 1
+                        else:
+                            deposit_counts[d] = 1
+                    # calculate mineables
+                    #mineables 
+                    for m in mineables:
+                        if m in mineable_counts:
+                            mineable_counts[m] += 1
+                            if m in mineablesT0:
+                                t0oresCounts[m] += 1
+                            if m in mineablesT1:
+                                t1oresCounts[m] += 1
+                            if m in mineablesT2:
+                                t2oresCounts[m] += 1
+                            if m in mineablesT3:
+                                t3oresCounts[m] += 1
+                            if m in mineablesT4:
+                                t4oresCounts[m] += 1
+                            if m in mineablesT5:
+                                t5oresCounts[m] += 1
+                            if m in shardTypeCounts:
+                                shardCounts[m] += 1
+                            if m in gemsTypeCounts:
+                                gemsCounts[m] += 1
+                        #else:
+                            #mineable_counts[m] = 0
+                                
+                    # calculate harvestables
+                    for d in harvests:
+                        d = d.replace('_Stage0', '')
+                        d = d.replace('_Stage1', '')
+                        d = d.replace('_Stage2', '')
+                        d = d.replace('_Stage3', '')
+                        if d in harvests_counts:
+                            harvests_counts[d] += 1
+                        else:
+                            harvests_counts[d] = 1
 
-                # calculate harvestables
-                for d in harvestResults:
-                    if d in harvestResult_counts:
-                        harvestResult_counts[d] += 1
-                    else:
-                        harvestResult_counts[d] = 1
+                    # calculate harvestables
+                    for d in harvestResults:
+                        if d in harvestResult_counts:
+                            harvestResult_counts[d] += 1
+                        else:
+                            harvestResult_counts[d] = 1
 
-                dpeositCounts = list(deposit_counts.values())
-                mineableCounts = list(mineable_counts.values())
-                t0ORECounts = list(t0oresCounts.values())
-                t1ORECounts = list(t1oresCounts.values())
-                t2ORECounts = list(t2oresCounts.values())
-                t3ORECounts = list(t3oresCounts.values())
-                t4ORECounts = list(t4oresCounts.values())
-                t5ORECounts = list(t5oresCounts.values())
-                shardCountsVals = list(shardCounts.values())
-                gemCountsVals = list(gemsCounts.values())
-                harvestsCountsVals = list(harvests_counts.values())
-                harvestResultCountsVals = list(harvestResult_counts.values())
-                essenceResultCountsVals = list(essenceResult_counts.values()) 
+                    dpeositCounts = list(deposit_counts.values())
+                    mineableCounts = list(mineable_counts.values())
+                    t0ORECounts = list(t0oresCounts.values())
+                    t1ORECounts = list(t1oresCounts.values())
+                    t2ORECounts = list(t2oresCounts.values())
+                    t3ORECounts = list(t3oresCounts.values())
+                    t4ORECounts = list(t4oresCounts.values())
+                    t5ORECounts = list(t5oresCounts.values())
+                    shardCountsVals = list(shardCounts.values())
+                    gemCountsVals = list(gemsCounts.values())
+                    harvestsCountsVals = list(harvests_counts.values())
+                    harvestResultCountsVals = list(harvestResult_counts.values())
+                    essenceResultCountsVals = list(essenceResult_counts.values()) 
+                    
+
+                if day_key[0] != '':  # Skip the segment name
+                    simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
+                                    sum(mineableCounts), sum(t0ORECounts), sum(t1ORECounts),sum(t2ORECounts),sum(t3ORECounts),sum(t4ORECounts),sum(t5ORECounts), sum(shardCountsVals), 
+                                    *shardCountsVals, sum(gemCountsVals), *mineableCounts, harvestsCount, *harvestsCountsVals, sum(harvestResultCountsVals), sum(essenceResultCountsVals), *harvestResultCountsVals, *essenceResultCountsVals]
+                    population_sim_summary.append(simDayData)
                 
 
-            if day_key[0] != '':  # Skip the segment name
-                simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
-                                 sum(mineableCounts), sum(t0ORECounts), sum(t1ORECounts),sum(t2ORECounts),sum(t3ORECounts),sum(t4ORECounts),sum(t5ORECounts), sum(shardCountsVals), 
-                                 *shardCountsVals, sum(gemCountsVals), *mineableCounts, harvestsCount, *harvestsCountsVals, sum(harvestResultCountsVals), sum(essenceResultCountsVals), *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults]
-                population_sim_summary.append(simDayData)
-            
-
-            #population_sim_summary = [day, segment_name, population, total_crypton_spent, runs]  # Fill in with the results of simulations
-            #print("population_sim_summary: " + str(population_sim_summary[3]))
-    
-    populationSimSheet.batch_clear(["A2:EQ"])
-    try: 
-        population_sim_summary = custom_sort(population_sim_summary)
-    except:
-        print(f"fucked")
-    populationSimSheet.update('A2', population_sim_summary, value_input_option='USER_ENTERED')
+                #population_sim_summary = [day, segment_name, population, total_crypton_spent, runs]  # Fill in with the results of simulations
+                #print("population_sim_summary: " + str(population_sim_summary[3]))
+        
+        populationSimSheet.batch_clear(["A2:EQ"])
+        try: 
+            population_sim_summary = custom_sort(population_sim_summary)
+        except:
+            print(f"fucked")
+        populationSimSheet.update('A2', population_sim_summary, value_input_option='USER_ENTERED')
 
 
 def custom_sort(data):
