@@ -526,7 +526,7 @@ def simulate_population_activities():
                     shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
                      # ILLUVIAL ENCOUTNERS DON"T REMOVE
                     newEncounterResults = publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts,
-                                                                         encounter_types, quantity_weights, illuvial_weights, illuvials_list, capture_difficulties)
+                                                                         encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
                     if encounterResults is None:
                         encounterResults = newEncounterResults
                     else: 

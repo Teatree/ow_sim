@@ -9,8 +9,8 @@ from line_profiler import profile
 
 # Configuration (Placeholder - Replace with actual values)
 num_runs = 10
-region_name = 'AB'
-region_stage = 1
+# region_name = 'AB'
+# region_stage = 1
 print("Encounter") 
 
 shardT0amount = 25
@@ -160,7 +160,7 @@ def calc_synergy_thresholds(stacks: dict):
 
 # Main Functions
 
-def simulate_encounters(num_runs, region_name, region_stage, encounter_types, encounter_type, quantity_weights_processed, combined_illuvial_weights, 
+def simulate_encounters(num_runs, regionNames, regionStages, illuvial_weights, encounter_types, encounter_type, 
                         illuvials_list, shard_amounts_vals, shard_powers, capture_difficulties, energy_per_encounter, illuvial_capture_counts, energy_balance):
     """Simulate encounters based on the provided parameters and probabilities."""
     illuvialCaptured = []
@@ -169,9 +169,14 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types, en
     shardsUsedForCapture = []
 
     num_encounters = math.floor(energy_balance / energy_per_encounter)
-    target_power = get_target_power(region_stage, encounter_type, encounter_types)
-
+    
     for _ in range(num_runs):
+        region_name = regionNames[_]
+        region_stage = regionStages[_]
+
+        combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type, illuvial_capture_counts)
+        target_power = get_target_power(region_stage, encounter_type, encounter_types)
+
         shard_amounts = shard_amounts_vals
         currentEnergy_balance = energy_balance
 
@@ -308,27 +313,20 @@ def get_target_power(region_stage, encounter_type, encounter_types):
 #     write_to_sheet('EncounterSim', simulationResults)
 
 
-def publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, 
-                                       illuvial_capture_counts, encounter_types, quantity_weights, illuvial_weights, illuvials_list, capture_difficulties):
-    num_runs = num_runs
-    region_name = region_name
-    region_stage = region_stage
+def publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, 
+                                       illuvial_capture_counts, encounter_types, illuvial_weights, illuvials_list, capture_difficulties):
     energy_balance = energyForEncounter
     energy_per_encounter = energy_cost_per_encounter
     encounter_types_processed = [(record['Encounter'], record['Weight']) for record in encounter_types]
     encounter_type = get_weighted_choice(encounter_types_processed)
 
-    quantity_weights_processed = [(int(k), v) for record in quantity_weights for k, v in record.items() if k.isdigit()]
-    combined_illuvial_weights = calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region_name, region_stage, encounter_type, illuvial_capture_counts)
-
     illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture = simulate_encounters(
         num_runs,
-        region_name,
-        region_stage,
+        regionNames,
+        regionStages,
+        illuvial_weights,
         encounter_types,
         encounter_type,
-        quantity_weights_processed,
-        combined_illuvial_weights,
         illuvials_list,
         shard_amounts_values,
         shard_power_values,
