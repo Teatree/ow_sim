@@ -34,7 +34,7 @@ num_encounters = 15
 
 
 # Function to calculate combined weights for Illuvials
-@profile
+
 def calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region, stage, encounter_type, illuvial_capture_counts):
     combined_weights = []
 
@@ -65,7 +65,7 @@ def calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region
 
 
 # Combining Weigths for Illuvials
-@profile
+
 def get_weighted_choice(options):
     """Given a list of tuples [(illuvial_identifier, combined_weight)], return an identifier based on the weighted probability."""
     identifiers, weights = zip(*options)
@@ -80,7 +80,7 @@ def get_weighted_choice(options):
         upto += weight
     assert False, "Shouldn't get here"
 
-@profile
+
 def calculate_capture_probability(capture_power, capture_difficulty, bonding_curve_value):
     overshoot = 1.1  # 110%
     curve_strength = 0.01  # 1%
@@ -88,7 +88,7 @@ def calculate_capture_probability(capture_power, capture_difficulty, bonding_cur
     probability *= bonding_curve_value
     return probability
 
-@profile
+
 def choose_shard(shard_amounts, chosen_tier):
     # Choose a random shard that has a non-zero amount
     if shard_amounts:
@@ -102,7 +102,7 @@ def choose_shard(shard_amounts, chosen_tier):
     else:
         return None, None
 
-@profile
+
 def get_capture_difficulty(capture_difficulties, tier, stage):
     # Convert tier and stage to strings if they are not already, to match the sheet format
     tier = tier
@@ -115,7 +115,7 @@ def get_capture_difficulty(capture_difficulties, tier, stage):
     
     return None  # Return None if no matching difficulty is found
 
-@profile
+
 def get_encounter(self, target_power: int, region: str, stage: str, encounter_type: str):
     total_power = 0
     total_mastery_points = 0
@@ -129,7 +129,7 @@ def get_encounter(self, target_power: int, region: str, stage: str, encounter_ty
         total_power = total_mastery_points * (1 + synergy_bonus)
     return encounter_illuvials
 
-@profile
+
 def get_synergy_bonus(chosen_illuvials: list):
     #chosen_illuvials_data = pd.DataFrame(pd.concat(chosen_illuvials, axis=1)).T
     chosen_illuvials_df = pd.DataFrame(chosen_illuvials)
@@ -145,7 +145,7 @@ def get_synergy_bonus(chosen_illuvials: list):
     synergy_bonus = (affinity_synergy_thresholds + class_synergy_thresholds) * 0.2
     return synergy_bonus
 
-@profile
+
 def calc_synergy_thresholds(stacks: dict):
     thresholds = 0
     for synergy_name, synergy_stacks in stacks.items():
@@ -159,101 +159,65 @@ def calc_synergy_thresholds(stacks: dict):
     return thresholds
 
 # Main Functions
-@profile
+
 def simulate_encounters(num_runs, region_name, region_stage, encounter_types, encounter_type, quantity_weights_processed, combined_illuvial_weights, 
                         illuvials_list, shard_amounts_vals, shard_powers, capture_difficulties, energy_per_encounter, illuvial_capture_counts, energy_balance):
     """Simulate encounters based on the provided parameters and probabilities."""
-    allEncountersInRegion = []
-    encounter_illuvials = []
-    
     illuvialCaptured = []
     illuvialCapturedTiers = []
     illuvialCapturedStages = []
     shardsUsedForCapture = []
 
     num_encounters = math.floor(energy_balance / energy_per_encounter)
-    encounter_index = 1  # Initialize encounter index
-    target_power = get_target_power(region_stage, encounter_type, encounter_types) # init target power
+    target_power = get_target_power(region_stage, encounter_type, encounter_types)
 
-    for run in range(1, num_runs + 1):
+    for _ in range(num_runs):
         shard_amounts = shard_amounts_vals
         currentEnergy_balance = energy_balance
 
-        encounter_index = 1
-        
         for _ in range(num_encounters):
-            # Determine the number of Illuvials in this encounter
-            # num_illuvials_in_encounter = get_weighted_choice(quantity_weights_processed)  # This needs to be adjusted if quantity_weights_processed structure changes
-
+            encounter_illuvials = []
             total_power = 0
             total_mastery_points = 0
 
             while total_power < target_power:
                 selected_illuvial_id = get_weighted_choice(combined_illuvial_weights)
                 illuvial_record = next((illuvial for illuvial in illuvials_list if illuvial['Production_ID'] == selected_illuvial_id), None)
-                if not illuvial_record:
-                    continue
-                
-                # calculating power
-                encounter_illuvials.append(illuvial_record)
-                synergy_bonus = get_synergy_bonus(chosen_illuvials=encounter_illuvials)
-                total_mastery_points += int(illuvial_record['Mastery Points'])
-                total_power = total_mastery_points * (1 + synergy_bonus)
+                if illuvial_record:
+                    encounter_illuvials.append(illuvial_record)
+                    synergy_bonus = get_synergy_bonus(chosen_illuvials=encounter_illuvials)
+                    total_mastery_points += int(illuvial_record['Mastery Points'])
+                    total_power = total_mastery_points * (1 + synergy_bonus)
 
-                # Append Illuvial data to allEncountersInRegion with the same encounter_index for Illuvials in the same encounter
-                allEncountersInRegion.append([
-                    run,
-                    region_name,
-                    region_stage,
-                    encounter_index,
-                    encounter_type,
-                    illuvial_record['Production_ID'],
-                    illuvial_record['Stage'],
-                    illuvial_record['Tier'],
-                    illuvial_record['Affinity'],
-                    illuvial_record['Class'],
-                    illuvial_record['Mastery Points']
-                ])
-                
-        # CAPTURING
-        win = random.random() < 0.8 # 80% win probability
-        if win:
-            currentEnergy_balance -= energy_per_encounter
-            # assign id and tier values
-            illuvialsToCapture = [encounter[5] for encounter in allEncountersInRegion if encounter[3] == encounter_index]
-            illuvialsToCaptureTiers = [encounter[7] for encounter in allEncountersInRegion if encounter[3] == encounter_index]
-            illuvialsToCaptureStages = [encounter[6] for encounter in allEncountersInRegion if encounter[3] == encounter_index]
-            
-            for index in range(len(illuvialsToCapture)):
-                captureAttempts = 0
-                if shard_amounts:
-                    chosen_shard, shard_amounts = choose_shard(shard_amounts, illuvialsToCaptureTiers[index]) # ?
-                else:
-                    break
-                if chosen_shard:
-                    captureAttempts += 1
-                    # add chosen shard to list of shards
-                    shardsUsedForCapture.append(chosen_shard)
-                    shard_power = shard_powers[chosen_shard]
-                    capture_difficulty = get_capture_difficulty(capture_difficulties, illuvialsToCaptureTiers[index], illuvialsToCaptureStages[index]) 
-                    
-                    # count of illuvials (yes I know this is messy, but we have to calculate it everytime anyway)
-                    capture_counts_dict = {illuvial['Production_ID']: illuvial['CaptureCount'] for illuvial in illuvial_capture_counts}
-                    capture_count = capture_counts_dict.get(illuvialsToCapture[index], 0)
-                    bonding_curve_value = calculateBondingCurveValue(capture_count, illuvialsToCaptureStages[index], illuvialsToCaptureTiers[index])
+            win = random.random() < 0.8
+            if win:
+                currentEnergy_balance -= energy_per_encounter
+                illuvialsToCapture = [illuvial['Production_ID'] for illuvial in encounter_illuvials]
+                illuvialsToCaptureTiers = [illuvial['Tier'] for illuvial in encounter_illuvials]
+                illuvialsToCaptureStages = [illuvial['Stage'] for illuvial in encounter_illuvials]
 
-                    capture_probability = calculate_capture_probability(shard_power, capture_difficulty, bonding_curve_value)
-                    success = "Yes" if random.random() < capture_probability else "No"
-                    if captureAttempts >= numCaptureAttempts:
-                        success = "No"
-                    if success == "Yes":
-                        # Illuvial that was captured
-                        illuvialCaptured.append(illuvialsToCapture[index])
-                        illuvialCapturedTiers.append(illuvialsToCaptureTiers[index])
-                        illuvialCapturedStages.append(illuvialsToCaptureStages[index])
-                else:
-                    pass
-        encounter_index += 1
+                for index in range(len(illuvialsToCapture)):
+                    captureAttempts = 0
+                    while shard_amounts and captureAttempts < numCaptureAttempts:
+                        chosen_shard, shard_amounts = choose_shard(shard_amounts, illuvialsToCaptureTiers[index])
+
+                        captureAttempts += 1
+
+                        if chosen_shard:
+                            shardsUsedForCapture.append(chosen_shard)
+                            shard_power = shard_powers[chosen_shard]
+                            capture_difficulty = get_capture_difficulty(capture_difficulties, illuvialsToCaptureTiers[index], illuvialsToCaptureStages[index])
+
+                            capture_count = next((illuvial['CaptureCount'] for illuvial in illuvial_capture_counts if illuvial['Production_ID'] == illuvialsToCapture[index]), 0)
+                            bonding_curve_value = calculateBondingCurveValue(capture_count, illuvialsToCaptureStages[index], illuvialsToCaptureTiers[index])
+
+                            capture_probability = calculate_capture_probability(shard_power, capture_difficulty, bonding_curve_value)
+                            success = random.random() < capture_probability
+                            if success:
+                                illuvialCaptured.append(illuvialsToCapture[index])
+                                illuvialCapturedTiers.append(illuvialsToCaptureTiers[index])
+                                illuvialCapturedStages.append(illuvialsToCaptureStages[index])
+                                break
 
     return illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture
 
@@ -263,7 +227,7 @@ def simulate_encounters(num_runs, region_name, region_stage, encounter_types, en
 #     sheet.resize(rows=len(data) + 1, cols=len(data[0]) if data else 0)
 #     sheet.update('A2', data, value_input_option='USER_ENTERED')
 
-@profile
+
 def get_target_power(region_stage, encounter_type, encounter_types):
     for row in encounter_types:
         if row['Stage'] == region_stage and row['Encounter'] == encounter_type:
@@ -343,7 +307,7 @@ def get_target_power(region_stage, encounter_type, encounter_types):
 
 #     write_to_sheet('EncounterSim', simulationResults)
 
-@profile
+
 def publicSimulateEncountersPopulation(num_runs, region_name, region_stage, energyForEncounter, energy_cost_per_encounter, shard_amounts_values, shard_power_values, 
                                        illuvial_capture_counts, encounter_types, quantity_weights, illuvial_weights, illuvials_list, capture_difficulties):
     num_runs = num_runs
@@ -398,6 +362,6 @@ def publicSimulateEncountersPopulation(num_runs, region_name, region_stage, ener
 
     return result
 
-@profile
+
 def custom_sort(item):
     return (item['run_number'], item['illuvial_name'], item['T0 Illuvials'], item['T1 Illuvials'])  # Add the rest of your tier keys
