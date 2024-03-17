@@ -7,6 +7,7 @@ from tqdm import tqdm
 #from encounter import simulateEncounters
 from encounter2 import publicSimulateEncountersPopulation
 import threading
+from line_profiler import profile
 
 # Authorization Setup
 scope = [
@@ -244,9 +245,9 @@ def choose_mineables(region, stage, deposit):
 
     mineables = deposit_data['Mineables']
     probabilities = [deposit_data['Probabilities'][f'Slot{i}Prob'] for i in range(1, 17)]
-    slots = random.choices(range(1, 17), weights=probabilities, k=1)[0]
+    slots = np.random.choices(range(1, 17), weights=probabilities, k=1)[0]
 
-    chosen_mineables = random.choices(list(mineables.keys()), weights=list(mineables.values()), k=slots)
+    chosen_mineables = np.random.choices(list(mineables.keys()), weights=list(mineables.values()), k=slots)
     return chosen_mineables
 
 
@@ -327,7 +328,7 @@ def choose_harvestable(region, stage, harvestableSpot):
 
     harvestables = harvestable_data['Harvestables']
 
-    chosen_harvestables = random.choices(list(harvestables.keys()), weights=list(harvestables.values()))
+    chosen_harvestables = np.random.choices(list(harvestables.keys()), weights=list(harvestables.values()))
     return chosen_harvestables
 
 def choose_essences(region, stage, harvestableSpot):
@@ -338,7 +339,7 @@ def choose_essences(region, stage, harvestableSpot):
 
     essences = harvestable_data['Essences']
 
-    chosen_essences = random.choices(list(essences.keys()), weights=list(essences.values()))
+    chosen_essences = np.random.choices(list(essences.keys()), weights=list(essences.values()))
 
     return chosen_essences[0]
 
@@ -350,6 +351,7 @@ harvestable_spawn_data = harvestableSpawnSheet.get_all_records()
 # SIMULATION PART WORKER
 
 # Helper Functions
+@profile
 def load_illuvials_list(sheet_name):
     sheet = spreadsheet.worksheet(sheet_name)
     # Get all values from the sheet
@@ -410,6 +412,7 @@ def load_capture_difficulties(sheet_name):
 # illuvials_list = load_illuvials_list('IlluvialsList')
 # capture_difficulties = load_capture_difficulties('Capture')
 
+@profile
 def worker(segment_data, shared_data, results):
     deposit_spawn_data, harvestable_spawn_data, illuvialsCounts, shard_names, shard_amounts_values_int, shard_powers, encounter_types, quantity_weights, illuvial_weights, illuvials_list, capture_difficulties = shared_data
 
@@ -468,21 +471,21 @@ def worker(segment_data, shared_data, results):
                 populationCount += 1
                 
                 if segment_name == "Max": 
-                    num_runs = random.choices(runs_weighted_types, weights=max_runs_weighted_values)[0]
-                    region_name = random.choices(region_weighted_types, weights=max_region_weighted_values)[0]
-                    region_stage = random.choices(region_stage_weighted_types, weights=max_region_stage_weighted_values)[0]
+                    num_runs = np.random.choices(runs_weighted_types, weights=max_runs_weighted_values)[0]
+                    region_name = np.random.choices(region_weighted_types, weights=max_region_weighted_values)[0]
+                    region_stage = np.random.choices(region_stage_weighted_types, weights=max_region_stage_weighted_values)[0]
                 elif segment_name == "High": 
-                    num_runs = random.choices(runs_weighted_types, weights=high_runs_weighted_values)[0]
-                    region_name = random.choices(region_weighted_types, weights=high_region_weighted_values)[0]
-                    region_stage = random.choices(region_stage_weighted_types, weights=high_region_stage_weighted_values)[0]
+                    num_runs = np.random.choices(runs_weighted_types, weights=high_runs_weighted_values)[0]
+                    region_name = np.random.choices(region_weighted_types, weights=high_region_weighted_values)[0]
+                    region_stage = np.random.choices(region_stage_weighted_types, weights=high_region_stage_weighted_values)[0]
                 elif segment_name == "Moderate": 
-                    num_runs = random.choices(runs_weighted_types, weights=moderate_runs_weighted_values)[0]
-                    region_name = random.choices(region_weighted_types, weights=moderate_region_weighted_values)[0]
-                    region_stage = random.choices(region_stage_weighted_types, weights=moderate_region_stage_weighted_values)[0]
+                    num_runs = np.random.choices(runs_weighted_types, weights=moderate_runs_weighted_values)[0]
+                    region_name = np.random.choices(region_weighted_types, weights=moderate_region_weighted_values)[0]
+                    region_stage = np.random.choices(region_stage_weighted_types, weights=moderate_region_stage_weighted_values)[0]
                 else:
-                    num_runs = random.choices(runs_weighted_types, weights=low_runs_weighted_values)[0]
-                    region_name = random.choices(region_weighted_types, weights=low_region_weighted_values)[0]
-                    region_stage = random.choices(region_stage_weighted_types, weights=low_region_stage_weighted_values)[0]
+                    num_runs = np.random.choices(runs_weighted_types, weights=low_runs_weighted_values)[0]
+                    region_name = np.random.choices(region_weighted_types, weights=low_region_weighted_values)[0]
+                    region_stage = np.random.choices(region_stage_weighted_types, weights=low_region_stage_weighted_values)[0]
 
                 simMiningResult = createMiningSimData(num_runs)
                 for run in simMiningResult:
@@ -555,19 +558,19 @@ def worker(segment_data, shared_data, results):
                 mineable_counts[m] += 1
                 if m in mineablesT0:
                     t0oresCounts[m] += 1
-                if m in mineablesT1:
+                elif m in mineablesT1:
                     t1oresCounts[m] += 1
-                if m in mineablesT2:
+                elif m in mineablesT2:
                     t2oresCounts[m] += 1
-                if m in mineablesT3:
+                elif m in mineablesT3:
                     t3oresCounts[m] += 1
-                if m in mineablesT4:
+                elif m in mineablesT4:
                     t4oresCounts[m] += 1
-                if m in mineablesT5:
+                elif m in mineablesT5:
                     t5oresCounts[m] += 1
-                if m in shardTypeCounts:
+                elif m in shardTypeCounts:
                     shardCounts[m] += 1
-                if m in gemsTypeCounts:
+                elif m in gemsTypeCounts:
                     gemsCounts[m] += 1
             #else:
                 #mineable_counts[m] = 0
@@ -621,6 +624,7 @@ def worker(segment_data, shared_data, results):
     
     return results
  
+@profile
 def simulate_population_activities(shared_data):
     num_threads = 4
     threads = []
@@ -661,7 +665,7 @@ def simulate_population_activities(shared_data):
     populationSimSheet.update('A2', empty_results, value_input_option='USER_ENTERED')
     populationSimIlluvialSheet.update('A1', illuvial_counts, value_input_option='USER_ENTERED')
 
-
+@profile
 def accumulate_encounter_results(results_list, new_results):
     for i in range(len(new_results)):
         # If the result item is a string, check it's not an empty space and concatenate it.
@@ -675,6 +679,7 @@ def accumulate_encounter_results(results_list, new_results):
             results_list[i] += new_results[i]
     return results_list
 
+@profile
 def custom_sort(data):
     severity_mapping = {"Max": 1, "High": 2, "Moderate": 3, "Low": 4}
 
@@ -707,7 +712,7 @@ def createMiningSimData(num_runs):
         while energyToMine >= 100:
             # Decide between regular and mega deposit based on availability
             if available_regular_deposits > 0 and available_mega_deposits > 0:
-                deposit_type = random.choices(['regular', 'mega'], weights=[80, 20], k=1)[0]
+                deposit_type = np.random.choices(['regular', 'mega'], weights=[80, 20], k=1)[0]
                 if region_stage == 0:
                     deposit_type = 'regular'
             elif available_regular_deposits > 0:
@@ -717,12 +722,12 @@ def createMiningSimData(num_runs):
 
             # Select deposit based on type and decrease availability
             if deposit_type == 'mega':
-                deposit = random.choice(mega_deposits)
+                deposit = np.random.choice(mega_deposits)
                 category = 'mega' 
                 energy_cost_per_mining = num_deplete_mega*mega_scanning_cost
                 available_mega_deposits -= 1
             else:
-                deposit = random.choice(regular_deposits)
+                deposit = np.random.choice(regular_deposits)
                 category = 'mini'  
                 available_regular_deposits -= 1
                 energy_cost_per_mining = mini_scanning_cost
@@ -778,7 +783,7 @@ def createHarvestingSimData(num_runs):
             energy_cost_per_harvesting = harvesting_cost
             energyToHarvest -= energy_cost_per_harvesting
 
-            harvestableSpot = random.choice(regular_harvestSpots) + str("_Stage"+str(region_stage))
+            harvestableSpot = np.random.choice(regular_harvestSpots) + str("_Stage"+str(region_stage))
 
             harvestableExtracted = choose_harvestable(region_name, str("S"+str(region_stage)), harvestableSpot)
 
