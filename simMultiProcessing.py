@@ -462,6 +462,7 @@ def worker(segment_data, shared_data, results):
         t4oresCounts = {'Rubivium':0,'Irivium':0}
         t5oresCounts = {'Selenvium':0,'Celestvium':0}
         shardCounts = {'Shard T0':0,'Shard T1':0,'Shard T2':0,'Shard T3':0,'Shard T4':0,'Shard T5':0}
+        curr_shards_inv_counter = 0
         gemsCounts = {'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
         regionsAB = 0
         regionsBS = 0
@@ -470,6 +471,7 @@ def worker(segment_data, shared_data, results):
         regionsS1 = 0
         regionsS2 = 0
         regionsS3 = 0
+        
 
         if day_key[0] != '':  # Skip the segment name
             population = day_key[1]
@@ -584,32 +586,42 @@ def worker(segment_data, shared_data, results):
                     moreThanZero = False
                     for extraction in run['Extractions']:
                         mineables.append(extraction['MineableExtracted'])
-                        if extraction['MineableExtracted'] == "Shard T0":
-                            currentShardCounts['Shard T0'] += 1
+                        if extraction['MineableExtracted'] and extraction['MineableExtracted'] in currentShardCounts.keys(): 
+                            currentShardCounts[extraction['MineableExtracted']] += 1
                             moreThanZero = True
-                        elif extraction['MineableExtracted'] == "Shard T1":
-                            currentShardCounts['Shard T1'] += 1
-                            moreThanZero = True
-                        elif extraction['MineableExtracted'] == "Shard T2":
-                            currentShardCounts['Shard T2'] += 1
-                            moreThanZero = True
-                        elif extraction['MineableExtracted'] == "Shard T3":
-                            currentShardCounts['Shard T3'] += 1
-                            moreThanZero = True
-                        elif extraction['MineableExtracted'] == "Shard T4":
-                            currentShardCounts['Shard T4'] += 1
-                            moreThanZero = True
-                        elif extraction['MineableExtracted'] == "Shard T5":
-                            currentShardCounts['Shard T5'] += 1
-                            moreThanZero = True
+                            
+                        # if extraction['MineableExtracted'] == "Shard T0":
+                        #     currentShardCounts['Shard T0'] += 1
+                        #     moreThanZero = True
+                        # elif extraction['MineableExtracted'] == "Shard T1":
+                        #     currentShardCounts['Shard T1'] += 1
+                        #     moreThanZero = True
+                        # elif extraction['MineableExtracted'] == "Shard T2":
+                        #     currentShardCounts['Shard T2'] += 1
+                        #     moreThanZero = True
+                        # elif extraction['MineableExtracted'] == "Shard T3":
+                        #     currentShardCounts['Shard T3'] += 1
+                        #     moreThanZero = True
+                        # elif extraction['MineableExtracted'] == "Shard T4":
+                        #     currentShardCounts['Shard T4'] += 1
+                        #     moreThanZero = True
+                        # elif extraction['MineableExtracted'] == "Shard T5":
+                        #     currentShardCounts['Shard T5'] += 1
+                        #     moreThanZero = True
 
                         if extraction['Ex'] != curEX:
                             deposits.append(extraction['Deposit'])
                             extractionsCount += 1
                             curEX = extraction['Ex']
 
-                    if moreThanZero == True:
-                        invShards.append(currentShardCounts)
+                    if moreThanZero == True:  
+                        if curr_shards_inv_counter < len(invShards): 
+                            existing_shartds_inv = invShards[curr_shards_inv_counter]
+                            for k in existing_shartds_inv:
+                                existing_shartds_inv[k] += currentShardCounts[k]
+                            curr_shards_inv_counter += 1
+                        else: 
+                            invShards.append(currentShardCounts)
 
                 simHarvestingResult = createHarvestingSimData(num_runs, regionStages, regionNames)
                 for run in simHarvestingResult:
@@ -651,9 +663,7 @@ def worker(segment_data, shared_data, results):
                     shardCounts[m] += 1
                 elif m in gemsTypeCounts:
                     gemsCounts[m] += 1
-            #else:
-                #mineable_counts[m] = 0 
-                    
+                   
         # calculate harvestables
         for d in harvests:
             d = d.replace('_Stage0', '')
