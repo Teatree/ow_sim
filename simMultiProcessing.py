@@ -58,8 +58,10 @@ regionTravelCost.append(int(cell_values[(11, 3)]))
 regionTravelCost.append(int(cell_values[(12, 3)]))
 regionTravelCost.append(int(cell_values[(13, 3)]))
 regionTravelCost.append(int(cell_values[(14, 3)]))
-
-
+# ingot crafting preference
+ingot_preference_weights = []
+for cell in keyValueSheet.range('I42:I61'):
+    ingot_preference_weights.append(int(cell.value))
 
 # population specific
 runs_weighted_types = []
@@ -147,6 +149,7 @@ def load_illuvials_list(illuvials_list_data):
 # ================================
 # DEPOSIT DATA
 depositSpawnSheet = spreadsheet.worksheet('DepositSpawn_EXPORT')
+ingotRecipeSheet = spreadsheet.worksheet('Ingots_EXPORT')
 populationEstimateSheet = spreadsheet.worksheet('PopulationEstimate')
 populationSimSheet = spreadsheet.worksheet('PopulationSim')
 populationSimIlluvialSheet = spreadsheet.worksheet('PopulationSimIlluvial')
@@ -156,6 +159,7 @@ illuvials_list_sheet = spreadsheet.worksheet('IlluvialsList')
 illuvials_list_data = illuvials_list_sheet.get_all_values()
 illuvialsCounts = load_illuvials_list(illuvials_list_data)
 deposit_spawn_data = depositSpawnSheet.get_all_records()
+ingot_recipe_data = ingotRecipeSheet.get_all_records()
 deposits_info = {}  # A dictionary to hold the deposit information
 regular_deposits = ['GeodyneDeposit', 'LazuriteDeposit', 'BismuthDeposit']
 mega_deposits = ['SeismicQuartz', 'TectonicNeovite', 'HelioAgate']
@@ -524,13 +528,14 @@ def worker(segment_data, shared_data, results):
                 
 
                 # ILLUVIALS
-                if len(invShards) > 0:
-                        # go through invShards and remove
-                    currentShardsInv = invShards.pop()
-                    newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, currentShardsInv, shard_powers, illuvialsCounts,
-                                                                         encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
-                else:
-                    shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
+                # if len(invShards) > 0:
+                #         # go through invShards and remove
+                #     currentShardsInv = invShards.pop()
+                #     newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, currentShardsInv, shard_powers, illuvialsCounts,
+                #                                                          encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
+                # else:
+                #     shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
+                shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
 
                  # ILLUVIAL ENCOUNTERS DON"T REMOVE
                 newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts,
@@ -687,17 +692,56 @@ def worker(segment_data, shared_data, results):
         shardCounts_array = np.array(list(shardCounts.values()))
         gemsCounts_array = np.array(list(gemsCounts.values()))
 
+        # Craft Ingots out of Ores
+        crafted_ingots, oresForCrafting = craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights)
+        craftedIngotCounts = list(crafted_ingots.values())
+        crafted_ingots_counts_array = np.array(craftedIngotCounts)
+
 
         if day_key[0] != '':  # Skip the segment name
             simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                 mineable_counts_array.sum().item(), t0ORECounts_array.sum().item(), t1ORECounts_array.sum().item(),t2ORECounts_array.sum().item(), t3ORECounts_array.sum().item(), t4ORECounts_array.sum().item(), t5ORECounts_array.sum().item(), shardCounts_array.sum().item(), 
                                 *shardCountsVals, gemsCounts_array.sum().item(), *mineableCounts, harvestsCount, *harvestsCountsVals, harvestResult_counts_array.sum().item()-essenceResult_counts_array.sum().item(), essenceResult_counts_array.sum().item(), 
-                                *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults]
+                                *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults, crafted_ingots_counts_array.sum().item(), 0, *craftedIngotCounts, oresForCrafting]
             #population_sim_summary.append(simDayData)
             results.append(simDayData)
     
     return results
- 
+
+ #### CRAFTING
+
+def craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights):
+    local_counts = mineable_counts.copy()
+    ingotCounts = {'Ethersteel Ingot':0,'Thorix Ingot':0,'Aurion Ingot':0,'Ithal Ingot':0,'Stannic Ingot':0,'Celestium Ingot':0,
+                   'Selerium Ingot':0,'Rubtium Ingot':0,'Rhedar Ingot':0,'Gallvium Ingot':0,'Vantium Ingot':0,'Jutko Ingot':0,
+                   'Nobelium Ingot':0,'Pallavium Ingot':0,'Gadolix Ingot':0,'Tungar Ingot':0,'Lath Ingot':0,'Chrovium Ingot':0,'Rhodium Ingot':0,'Neodar Ingot': 0}
+    oresUsedForCrafting = 0
+
+    for ingot_recipe in ingot_recipe_data:
+        ingot_name = ingot_recipe['Ingot']
+        if ingot_name not in ingotCounts:
+            continue
+
+        ore_requirements = []
+        for i in range(1, 4):
+            ore = ingot_recipe.get(f'Ore #{i}')
+            amount = ingot_recipe.get(f'Amount #{i}')
+            if ore and amount and amount:
+                ore_requirements.append((ore, int(amount)))
+
+        can_craft = all(local_counts.get(ore, 0) >= amount for ore, amount in ore_requirements)
+
+        if can_craft:
+            max_craft_count = min(local_counts[ore] // amount for ore, amount in ore_requirements)
+            craft_count = random.choice(range(1, max_craft_count+1))
+
+            ingotCounts[ingot_name] += craft_count
+
+            for ore, amount in ore_requirements:
+                local_counts[ore] -= amount * craft_count
+                oresUsedForCrafting += amount * craft_count
+
+    return ingotCounts, oresUsedForCrafting
 
 def simulate_population_activities(shared_data):
     num_threads = 4
@@ -980,9 +1024,9 @@ shard_names_col = headers.index('Shard Type') + 1
 shard_amounts_col = headers.index('Shard Amounts') + 1  # +1 because list index is 0-based, but gspread is 1-based
 shard_power_col = headers.index('Shard Power') + 1
 
-shard_names = keyValueSheet.col_values(shard_names_col)[30:38]
-shard_amounts_values = keyValueSheet.col_values(shard_amounts_col)[30:38] 
-shard_power_values = keyValueSheet.col_values(shard_power_col)[30:38]
+shard_names = keyValueSheet.col_values(shard_names_col)[30:37]
+shard_amounts_values = keyValueSheet.col_values(shard_amounts_col)[30:37] 
+shard_power_values = keyValueSheet.col_values(shard_power_col)[30:37]
 
 shard_amounts_values_int = [int(value) for value in shard_amounts_values]
 shard_power_values_int = [int(value) for value in shard_power_values]
