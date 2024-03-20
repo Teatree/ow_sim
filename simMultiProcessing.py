@@ -403,8 +403,8 @@ def load_illuvial_weights(sheet_name):
         weights[(row['Region'], row['Region Stage'], row['Encounter Type'])] = {
             'Stage': {key: value for key, value in row.items() if key.startswith('S')},
             'Tier': {key: value for key, value in row.items() if key.startswith('T')},
-            'Affinity': {key: value for key, value in row.items() if key in ['Water', 'Fire', 'Earth', 'Air', 'Nature']},
-            'Class': {key: value for key, value in row.items() if key not in ['Region', 'Stage', 'Encounter Type', 'Weight', 'Target Power']}
+            'Affinity': {key: value for key, value in row.items() if key in ['Water', 'Fire', 'Earth', 'Air', 'Nature', 'Tsunami','Mud','Granite','Steam','Magma','Inferno','Toxic','Bloom','Wildfire','Verdant','Frost','Dust','Shock','Spore','Tempest']},
+            'Class': {key: value for key, value in row.items() if key in ['Empath','Fighter','Bulwark','Psion','Rogue','Harbinger','Phantom','Berserker','Slayer','Aegis','Revenant','Colossus','Enchanter','Mystic','Behemoth','Invoker','Templar','Vanguard','Arcanite','Predator','Cls_None']}
         }
     return weights
 
@@ -426,6 +426,7 @@ def worker(segment_data, shared_data, results):
     print("simulating " + segment_name)
 
     invShards = [] # starting amount of shards that every Player in the segment has
+    invMineables = [] # for crafting Ingots
     
     population_sim_summary = []
 
@@ -463,6 +464,7 @@ def worker(segment_data, shared_data, results):
         t5oresCounts = {'Selenvium':0,'Celestvium':0}
         shardCounts = {'Shard T0':0,'Shard T1':0,'Shard T2':0,'Shard T3':0,'Shard T4':0,'Shard T5':0}
         curr_shards_inv_counter = 0
+        curr_ores_inv_counter = 0
         gemsCounts = {'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
         regionsAB = 0
         regionsBS = 0
@@ -477,13 +479,39 @@ def worker(segment_data, shared_data, results):
             population = day_key[1]
             day = day_key[0]
 
+            # invShards - list of all inventories that Population Has
+
             # remove 30% of population
             if invShards:
-                num_to_keep = round(len(invShards) * 0.3)
+                if segment_name == "Max":
+                    num_to_keep = round(len(invShards) * 0.65) # 65%
+                elif segment_name == "High":
+                    num_to_keep = round(len(invShards) * 0.5) # 50%
+                elif segment_name == "Moderate":
+                    num_to_keep = round(len(invShards) * 0.5) # 50%
+                else:
+                    num_to_keep = round(len(invShards) * 0.3)
                 indices = np.random.choice(len(invShards), num_to_keep, replace=False)
                 invShards = [invShards[i] for i in indices]
+
+            # remove 30% of population for Ores 
+            if invMineables:
+                if segment_name == "Max":
+                    num_to_keep = round(len(invMineables) * 0.65) # 65%
+                elif segment_name == "High":
+                    num_to_keep = round(len(invMineables) * 0.5) # 50%
+                elif segment_name == "Moderate":
+                    num_to_keep = round(len(invMineables) * 0.5) # 50%
+                else:
+                    num_to_keep = round(len(invMineables) * 0.3)
+                indices = np.random.choice(len(invMineables), num_to_keep, replace=False)
+                invMineables = [invMineables[i] for i in indices]
+            
             
             while populationCount < population:
+                # invShards gets Inventories added to it here
+                # ======
+
                 # print(str(segment_name) + ":" + str(populationCount) + " / " + str(population), end="\r", flush=True)
                 populationCount += 1
                 
@@ -492,8 +520,6 @@ def worker(segment_data, shared_data, results):
 
                 if segment_name == "Max": 
                     num_runs = random.choices(runs_weighted_types, weights=max_runs_weighted_values)[0]
-                    # region_name = random.choices(region_weighted_types, weights=max_region_weighted_values)[0]
-                    # region_stage = random.choices(region_stage_weighted_types, weights=max_region_stage_weighted_values)[0]
                     i = 0
                     while i < num_runs:
                         i += 1
@@ -502,8 +528,6 @@ def worker(segment_data, shared_data, results):
 
                 elif segment_name == "High": 
                     num_runs = random.choices(runs_weighted_types, weights=high_runs_weighted_values)[0]
-                    # region_name = random.choices(region_weighted_types, weights=high_region_weighted_values)[0]
-                    # region_stage = random.choices(region_stage_weighted_types, weights=high_region_stage_weighted_values)[0]
                     i = 0
                     while i < num_runs:
                         i += 1
@@ -511,8 +535,6 @@ def worker(segment_data, shared_data, results):
                         regionStages.append(random.choices(region_stage_weighted_types, weights=high_region_stage_weighted_values)[0])
                 elif segment_name == "Moderate": 
                     num_runs = random.choices(runs_weighted_types, weights=moderate_runs_weighted_values)[0]
-                    # region_name = random.choices(region_weighted_types, weights=moderate_region_weighted_values)[0]
-                    # region_stage = random.choices(region_stage_weighted_types, weights=moderate_region_stage_weighted_values)[0]
                     i = 0
                     while i < num_runs:
                         i += 1
@@ -520,28 +542,39 @@ def worker(segment_data, shared_data, results):
                         regionStages.append(random.choices(region_stage_weighted_types, weights=moderate_region_stage_weighted_values)[0])
                 else:
                     num_runs = random.choices(runs_weighted_types, weights=low_runs_weighted_values)[0]
-                    # region_name = random.choices(region_weighted_types, weights=low_region_weighted_values)[0]
-                    # region_stage = random.choices(region_stage_weighted_types, weights=low_region_stage_weighted_values)[0]
                     i = 0
                     while i < num_runs:
                         i += 1
                         regionNames.append(random.choices(region_weighted_types, weights=low_region_weighted_values)[0])
                         regionStages.append(random.choices(region_stage_weighted_types, weights=low_region_stage_weighted_values)[0])
                 
+                # can only play Stage 0 once
+                isZero = False
+                regionStages_copy = regionStages.copy()
+                for s in range(0, len(regionStages_copy)-1):
+                    if isZero == False and regionStages_copy[s] == 0:
+                        isZero = True
+                        continue
+                    if isZero and regionStages_copy[s] == 0 and random.random() < 0.15:
+                        regionStages[s] = 1
+                    elif isZero and regionStages_copy[s] == 0:
+                        regionNames.pop(s)
+                        regionStages.pop(s)
+                        num_runs -= 1
+
 
                 # ILLUVIALS
-                # if len(invShards) > 0:
-                #         # go through invShards and remove
-                #     currentShardsInv = invShards.pop()
-                #     newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, currentShardsInv, shard_powers, illuvialsCounts,
-                #                                                          encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
-                # else:
-                #     shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
-                shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
+                if len(invShards) > 0:
+                    # go through invShards and remove
+                    currentShardsInv = invShards.pop()
+                    newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, currentShardsInv, shard_powers, illuvialsCounts,
+                                                                         encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
+                else:
+                    shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
+                    newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts,
+                                                                         encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
 
                  # ILLUVIAL ENCOUNTERS DON"T REMOVE
-                newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts,
-                                                                         encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
                 if encounterResults is None:
                     encounterResults = newEncounterResults
                 else: 
@@ -583,38 +616,30 @@ def worker(segment_data, shared_data, results):
                     
                     curEX = 0
                     currentShardCounts = {'Shard T0':0,'Shard T1':0,'Shard T2':0,'Shard T3':0,'Shard T4':0,'Shard T5':0}
-                    moreThanZero = False
+                    currentOresCounts = {'Osvium':0,'Rhodivium':0,'Lithvium':0,'Chrovium':0,'Pallavium':0,'Gallvium':0,'Vanavium':0,'Tellvium':0,
+                                         'Rubivium':0,'Irivium':0,'Selenvium':0,'Celestvium':0,'ShardT0':0,'ShardT1':0,'ShardT2':0,'ShardT3':0,
+                                         'ShardT4':0,'ShardT5':0,'WaterGemT0':0,'WaterGemT1':0,'WaterGemT2':0,'WaterGemT3':0,'WaterGemT4':0,'WaterGemT5':0,
+                                         'EarthGemT0':0,'EarthGemT1':0,'EarthGemT2':0,'EarthGemT3':0,'EarthGemT4':0,'EarthGemT5':0,'FireGemT0':0,'FireGemT1':0,
+                                         'FireGemT2':0,'FireGemT3':0,'FireGemT4':0,'FireGemT5':0,'NatureGemT0':0,'NatureGemT1':0,'NatureGemT2':0,'NatureGemT3':0,
+                                         'NatureGemT4':0,'NatureGemT5':0,'AirGemT0':0,'AirGemT1':0,'AirGemT2':0,'AirGemT3':0,'AirGemT4':0,'AirGemT5':0}
+                    moreThanZeroShards = False
+                    moreThanZeroOres = False
                     for extraction in run['Extractions']:
                         mineables.append(extraction['MineableExtracted'])
                         if extraction['MineableExtracted'] and extraction['MineableExtracted'] in currentShardCounts.keys(): 
                             currentShardCounts[extraction['MineableExtracted']] += 1
-                            moreThanZero = True
-                            
-                        # if extraction['MineableExtracted'] == "Shard T0":
-                        #     currentShardCounts['Shard T0'] += 1
-                        #     moreThanZero = True
-                        # elif extraction['MineableExtracted'] == "Shard T1":
-                        #     currentShardCounts['Shard T1'] += 1
-                        #     moreThanZero = True
-                        # elif extraction['MineableExtracted'] == "Shard T2":
-                        #     currentShardCounts['Shard T2'] += 1
-                        #     moreThanZero = True
-                        # elif extraction['MineableExtracted'] == "Shard T3":
-                        #     currentShardCounts['Shard T3'] += 1
-                        #     moreThanZero = True
-                        # elif extraction['MineableExtracted'] == "Shard T4":
-                        #     currentShardCounts['Shard T4'] += 1
-                        #     moreThanZero = True
-                        # elif extraction['MineableExtracted'] == "Shard T5":
-                        #     currentShardCounts['Shard T5'] += 1
-                        #     moreThanZero = True
+                            moreThanZeroShards = True
+
+                        if extraction['MineableExtracted'] and extraction['MineableExtracted'] in currentOresCounts.keys(): 
+                            currentOresCounts[extraction['MineableExtracted']] += 1
+                            moreThanZeroOres = True
 
                         if extraction['Ex'] != curEX:
                             deposits.append(extraction['Deposit'])
                             extractionsCount += 1
                             curEX = extraction['Ex']
 
-                    if moreThanZero == True:  
+                    if moreThanZeroShards == True:  
                         if curr_shards_inv_counter < len(invShards): 
                             existing_shartds_inv = invShards[curr_shards_inv_counter]
                             for k in existing_shartds_inv:
@@ -622,6 +647,15 @@ def worker(segment_data, shared_data, results):
                             curr_shards_inv_counter += 1
                         else: 
                             invShards.append(currentShardCounts)
+
+                    if moreThanZeroOres == True:  
+                        if curr_ores_inv_counter < len(invMineables): 
+                            existing_ores_inv = invMineables[curr_ores_inv_counter]
+                            for k in existing_ores_inv:
+                                existing_ores_inv[k] += currentOresCounts[k]
+                            curr_ores_inv_counter += 1
+                        else: 
+                            invMineables.append(currentOresCounts)
 
                 simHarvestingResult = createHarvestingSimData(num_runs, regionStages, regionNames)
                 for run in simHarvestingResult:
@@ -702,7 +736,13 @@ def worker(segment_data, shared_data, results):
         shardCounts_array = np.array(list(shardCounts.values()))
         gemsCounts_array = np.array(list(gemsCounts.values()))
 
-        # Craft Ingots out of Ores
+        # # Craft Ingots out of Ores
+        # if len(invMineables) > 0:
+        #     currentOresInv = invMineables.pop()
+        #     crafted_ingots, oresForCrafting = craft_ingots(currentOresInv, ingot_recipe_data, ingot_preference_weights)
+        #     invMineables.append(currentOresInv)
+        # else:
+        #     crafted_ingots, oresForCrafting = craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights)
         crafted_ingots, oresForCrafting = craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights)
         craftedIngotCounts = list(crafted_ingots.values())
         crafted_ingots_counts_array = np.array(craftedIngotCounts)
@@ -739,17 +779,17 @@ def craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights):
             if ore and amount and amount:
                 ore_requirements.append((ore, int(amount)))
 
-        can_craft = all(local_counts.get(ore, 0) >= amount for ore, amount in ore_requirements)
+        can_craft = any(local_counts.get(ore, 0) > 0 for ore, amount in ore_requirements)
 
         if can_craft:
-            max_craft_count = min(local_counts[ore] // amount for ore, amount in ore_requirements)
-            craft_count = random.choice(range(1, max_craft_count+1))
+            max_craft_count = min(local_counts.get(ore, 0) // amount for ore, amount in ore_requirements)
+            if max_craft_count > 0:
+                craft_count = random.choice(range(1, max_craft_count+1))
+                ingotCounts[ingot_name] += craft_count
 
-            ingotCounts[ingot_name] += craft_count
-
-            for ore, amount in ore_requirements:
-                local_counts[ore] -= amount * craft_count
-                oresUsedForCrafting += amount * craft_count
+                for ore, amount in ore_requirements:
+                    local_counts[ore] -= amount * craft_count
+                    oresUsedForCrafting += amount * craft_count
 
     return ingotCounts, oresUsedForCrafting
 
@@ -789,6 +829,7 @@ def simulate_population_activities(shared_data):
 
     # Write results to sheet
     populationSimSheet.batch_clear(["A2:EZ"])
+    populationSimIlluvialSheet.batch_clear(["A2:CX"])
     try:
         empty_results = custom_sort(empty_results)
     except:
@@ -799,13 +840,11 @@ def simulate_population_activities(shared_data):
 
 def accumulate_encounter_results(results_list, new_results):
     for i in range(len(new_results)):
-        # If the result item is a string, check it's not an empty space and concatenate it.
         if isinstance(new_results[i], str) and new_results[i].strip():
             if results_list[i]:  # if the current result list string is not empty
                 results_list[i] += ", " + new_results[i]
             else:  # if the current result list string is empty (first iteration)
                 results_list[i] = new_results[i]
-        # If the result item is an integer, sum it.
         elif isinstance(new_results[i], int):
             results_list[i] += new_results[i]
     return results_list
