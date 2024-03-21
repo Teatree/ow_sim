@@ -224,7 +224,7 @@ def simulate_encounters(num_runs, regionNames, regionStages, illuvial_weights, e
                                 illuvialCapturedStages.append(illuvialsToCaptureStages[index])
                                 break
 
-    return illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture
+    return illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture, shard_amounts
 
 # def write_to_sheet(sheet_name, data):
 #     """Write the simulation allEncountersInRegion to the specified Google Sheet."""
@@ -320,7 +320,7 @@ def publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, ener
     encounter_types_processed = [(record['Encounter'], record['Weight']) for record in encounter_types]
     encounter_type = get_weighted_choice(encounter_types_processed)
 
-    illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture = simulate_encounters(
+    illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture, shardAmounts = simulate_encounters(
         num_runs,
         regionNames,
         regionStages,
@@ -358,7 +358,7 @@ def publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, ener
         sum_shardsUsedForCapture
     ]
 
-    return result
+    return result, shardAmounts
 
 
 def custom_sort(item):

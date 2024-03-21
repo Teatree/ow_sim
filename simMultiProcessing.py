@@ -425,10 +425,13 @@ def worker(segment_data, shared_data, results):
     segment_name = segment_data['']
     print("simulating " + segment_name)
 
-    invShards = [] # starting amount of shards that every Player in the segment has
+    runlyShardCounts = [] # starting amount of shards that every Player in the segment has
     invMineables = [] # for crafting Ingots
     
     population_sim_summary = []
+
+    # Shards gathered in a day list
+    dailyShardCounts = []
 
     for day_key in tqdm(segment_data.items()):
         day = ""
@@ -479,20 +482,20 @@ def worker(segment_data, shared_data, results):
             population = day_key[1]
             day = day_key[0]
 
-            # invShards - list of all inventories that Population Has
+            
 
             # remove 30% of population
-            if invShards:
+            if dailyShardCounts:
                 if segment_name == "Max":
-                    num_to_keep = round(len(invShards) * 0.65) # 65%
+                    num_to_keep = round(len(dailyShardCounts) * 0.65) # 65%
                 elif segment_name == "High":
-                    num_to_keep = round(len(invShards) * 0.5) # 50%
+                    num_to_keep = round(len(dailyShardCounts) * 0.5) # 50%
                 elif segment_name == "Moderate":
-                    num_to_keep = round(len(invShards) * 0.5) # 50%
+                    num_to_keep = round(len(dailyShardCounts) * 0.5) # 50%
                 else:
-                    num_to_keep = round(len(invShards) * 0.3)
-                indices = np.random.choice(len(invShards), num_to_keep, replace=False)
-                invShards = [invShards[i] for i in indices]
+                    num_to_keep = round(len(dailyShardCounts) * 0.3)
+                indices = np.random.choice(len(dailyShardCounts), num_to_keep, replace=False)
+                dailyShardCounts = [dailyShardCounts[i] for i in indices]
 
             # remove 30% of population for Ores 
             if invMineables:
@@ -507,7 +510,10 @@ def worker(segment_data, shared_data, results):
                 indices = np.random.choice(len(invMineables), num_to_keep, replace=False)
                 invMineables = [invMineables[i] for i in indices]
             
+            oldShardsUseCounter = 0
             
+            populationlyShardCounts = []
+
             while populationCount < population:
                 # invShards gets Inventories added to it here
                 # ======
@@ -518,6 +524,9 @@ def worker(segment_data, shared_data, results):
                 regionNames = []
                 regionStages = []
 
+                runlyShardCounts = []
+
+                # region: Init for Segments
                 if segment_name == "Max": 
                     num_runs = random.choices(runs_weighted_types, weights=max_runs_weighted_values)[0]
                     i = 0
@@ -547,7 +556,8 @@ def worker(segment_data, shared_data, results):
                         i += 1
                         regionNames.append(random.choices(region_weighted_types, weights=low_region_weighted_values)[0])
                         regionStages.append(random.choices(region_stage_weighted_types, weights=low_region_stage_weighted_values)[0])
-                
+                # endregion
+             
                 # can only play Stage 0 once
                 isZero = False
                 regionStages_copy = regionStages.copy()
@@ -564,15 +574,23 @@ def worker(segment_data, shared_data, results):
 
 
                 # ILLUVIALS
-                if len(invShards) > 0:
-                    # go through invShards and remove
-                    currentShardsInv = invShards.pop()
-                    newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, currentShardsInv, shard_powers, illuvialsCounts,
+                
+                # Go through dailyShardCounts and see if there are any leftover from yesterday
+                # If yes, then use those for capturing instead of new ones
+                # Once old ones are through start processing new ones
+                if oldShardsUseCounter < len(dailyShardCounts):
+                    currentShardsInv = dailyShardCounts[oldShardsUseCounter]
+                    newEncounterResults, currentShardsInv = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, currentShardsInv, shard_powers, illuvialsCounts,
                                                                          encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
+                    dailyShardCounts[oldShardsUseCounter] = currentShardsInv
+                    oldShardsUseCounter += 1
                 else:
                     shard_amounts = dict(zip(shard_names, shard_amounts_values_int))
-                    newEncounterResults = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts,
+                    newEncounterResults, currentShardsInv = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts,
                                                                          encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
+                    shard_amounts = currentShardsInv
+
+
 
                  # ILLUVIAL ENCOUNTERS DON"T REMOVE
                 if encounterResults is None:
@@ -590,6 +608,7 @@ def worker(segment_data, shared_data, results):
 
                 simMiningResult = createMiningSimData(num_runs, regionStages, regionNames)
                 miningCounter = 0
+
                 for run in simMiningResult:
                     region_name = regionNames[miningCounter]
                     region_stage = regionStages[miningCounter]
@@ -626,6 +645,7 @@ def worker(segment_data, shared_data, results):
                     moreThanZeroOres = False
                     for extraction in run['Extractions']:
                         mineables.append(extraction['MineableExtracted'])
+
                         if extraction['MineableExtracted'] and extraction['MineableExtracted'] in currentShardCounts.keys(): 
                             currentShardCounts[extraction['MineableExtracted']] += 1
                             moreThanZeroShards = True
@@ -639,14 +659,15 @@ def worker(segment_data, shared_data, results):
                             extractionsCount += 1
                             curEX = extraction['Ex']
 
+
                     if moreThanZeroShards == True:  
-                        if curr_shards_inv_counter < len(invShards): 
-                            existing_shartds_inv = invShards[curr_shards_inv_counter]
+                        if curr_shards_inv_counter < len(runlyShardCounts): 
+                            existing_shartds_inv = runlyShardCounts[curr_shards_inv_counter]
                             for k in existing_shartds_inv:
                                 existing_shartds_inv[k] += currentShardCounts[k]
                             curr_shards_inv_counter += 1
                         else: 
-                            invShards.append(currentShardCounts)
+                            runlyShardCounts.append(currentShardCounts)
 
                     if moreThanZeroOres == True:  
                         if curr_ores_inv_counter < len(invMineables): 
@@ -656,6 +677,15 @@ def worker(segment_data, shared_data, results):
                             curr_ores_inv_counter += 1
                         else: 
                             invMineables.append(currentOresCounts)
+
+
+                # Gather ALL invShards that this Person got from 1 Day
+                tempShardPile = {'Shard T0':0,'Shard T1':0,'Shard T2':0,'Shard T3':0,'Shard T4':0,'Shard T5':0}
+                for inv in runlyShardCounts:
+                    for key, value in inv.items():
+                        tempShardPile[key] += value
+                populationlyShardCounts.append(tempShardPile)
+
 
                 simHarvestingResult = createHarvestingSimData(num_runs, regionStages, regionNames)
                 for run in simHarvestingResult:
@@ -668,6 +698,11 @@ def worker(segment_data, shared_data, results):
                             essenceResult_counts[extraction['EssenceExtracted']] += 1
                         if extraction['BonusEssenceExtracted'] in essenceResult_counts:
                             essenceResult_counts[extraction['BonusEssenceExtracted']] += 1
+
+            # Send populationShardCounts to daily shard counts so they can be processed
+            for dailyShards in populationlyShardCounts:
+                dailyShardCounts.append(dailyShards)
+            
 
         ##print("OUTPUT:" + str(harvesting_data_for_writing))
         # calculate deposits
@@ -803,6 +838,10 @@ def simulate_population_activities(shared_data):
         t.start()
         threads.append(t)
 
+    # t = threading.Thread(target=worker, args=(population_data[3], shared_data, results))
+    # t.start()
+    # threads.append(t)
+
     # Wait for all threads to complete
     for t in threads:
         t.join()
@@ -828,7 +867,7 @@ def simulate_population_activities(shared_data):
         
 
     # Write results to sheet
-    populationSimSheet.batch_clear(["A2:EZ"])
+    populationSimSheet.batch_clear(["A2:GD"])
     populationSimIlluvialSheet.batch_clear(["A2:CX"])
     try:
         empty_results = custom_sort(empty_results)
@@ -1000,6 +1039,8 @@ def createHarvestingSimData(num_runs, regionStages, regionNames):
 mining_data_for_writing = []
 harvesting_data_for_writing = []
 
+# region: INDIVIDUAL SIM
+
 # def individualSim(num_runs):
 #     simMiningResult = createMiningSimData(num_runs)
 #     for run in tqdm(simMiningResult):
@@ -1065,6 +1106,7 @@ harvesting_data_for_writing = []
 #         range_to_clear = f'A2:K{number_of_rows_to_clear}'
 #         harvesting_sim_sheet.batch_clear([range_to_clear])
 
+# endregion
 
 # Simulate Encounters
 headers = keyValueSheet.row_values(30)
