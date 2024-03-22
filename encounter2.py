@@ -54,8 +54,6 @@ def calculate_illuvial_combined_weights(illuvials_list, illuvial_weights, region
         capture_count = capture_counts_dict.get(production_id, 0)
         bonding_curve_value = calculateBondingCurveValue(capture_count, illuvial.get('Stage'), illuvial.get('Tier'))
         
-        # TODO: Iterate here and see if the list of bonding curves contains 
-        
         # Calculate combined weight and append it along with the illuvial's Production_ID
         if stage_weight and tier_weight and affinity_weight and class_weight:  # Ensure no zero weights
             combined_weight = stage_weight * tier_weight * affinity_weight * class_weight * bonding_curve_value
@@ -168,8 +166,11 @@ def simulate_encounters(num_runs, regionNames, regionStages, illuvial_weights, e
     illuvialCapturedStages = []
     shardsUsedForCapture = []
 
+    allEncounterIlluvials = []
+
     num_encounters = math.floor(energy_balance / energy_per_encounter)
-    
+    totalCaptureAttempts = 0
+
     for _ in range(num_runs):
         region_name = regionNames[_]
         region_stage = regionStages[_]
@@ -179,6 +180,7 @@ def simulate_encounters(num_runs, regionNames, regionStages, illuvial_weights, e
 
         shard_amounts = shard_amounts_vals
         currentEnergy_balance = energy_balance
+
 
         for _ in range(num_encounters):
             encounter_illuvials = []
@@ -193,6 +195,7 @@ def simulate_encounters(num_runs, regionNames, regionStages, illuvial_weights, e
                     synergy_bonus = get_synergy_bonus(chosen_illuvials=encounter_illuvials)
                     total_mastery_points += int(illuvial_record['Mastery Points'])
                     total_power = total_mastery_points * (1 + synergy_bonus)
+                    allEncounterIlluvials.append(illuvial_record)
 
             win = random.random() < 0.8
             if win:
@@ -223,8 +226,9 @@ def simulate_encounters(num_runs, regionNames, regionStages, illuvial_weights, e
                                 illuvialCapturedTiers.append(illuvialsToCaptureTiers[index])
                                 illuvialCapturedStages.append(illuvialsToCaptureStages[index])
                                 break
+                        totalCaptureAttempts = captureAttempts
 
-    return illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture, shard_amounts
+    return illuvialCaptured, allEncounterIlluvials, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture, shard_amounts, totalCaptureAttempts
 
 # def write_to_sheet(sheet_name, data):
 #     """Write the simulation allEncountersInRegion to the specified Google Sheet."""
@@ -320,7 +324,7 @@ def publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, ener
     encounter_types_processed = [(record['Encounter'], record['Weight']) for record in encounter_types]
     encounter_type = get_weighted_choice(encounter_types_processed)
 
-    illuvialCaptured, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture, shardAmounts = simulate_encounters(
+    illuvialCaptured, allEncounterIlluvials, illuvialCapturedTiers, illuvialCapturedStages, shardsUsedForCapture, shardAmounts, totalCaptureAttempts = simulate_encounters(
         num_runs,
         regionNames,
         regionStages,
@@ -339,6 +343,8 @@ def publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, ener
     # Calculating sums and counts
     sum_illuvialCaptured = len(illuvialCaptured)
     sum_shardsUsedForCapture = len(shardsUsedForCapture)
+    sum_allEncounteredIlluvials = len(allEncounterIlluvials)
+
 
     # Joining lists into strings
     illuvialCaptured_str = ", ".join(illuvialCaptured) # can't use this because of 50000 chars in cell limit
@@ -354,8 +360,9 @@ def publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, ener
         illuvialCaptured_str,
         tier_counts["T0"], tier_counts["T1"], tier_counts["T2"], tier_counts["T3"], tier_counts["T4"], tier_counts["T5"],
         stage_counts["S1"], stage_counts["S2"], stage_counts["S3"], 
-        shardsUsedForCapture_str,
-        sum_shardsUsedForCapture
+        "a "+str(totalCaptureAttempts),
+        sum_shardsUsedForCapture,
+        sum_allEncounteredIlluvials
     ]
 
     return result, shardAmounts

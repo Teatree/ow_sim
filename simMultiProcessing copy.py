@@ -495,30 +495,7 @@ def worker(segment_data, shared_data, results):
                     num_to_keep = round(len(invShards) * 0.3)
                 indices = np.random.choice(len(invShards), num_to_keep, replace=False)
                 invShards = [invShards[i] for i in indices]
-
-            # remove 30% of population for Ores 
-            if invMineables:
-                if segment_name == "Max":
-                    num_to_keep = round(len(invMineables) * 0.65) # 65%
-                elif segment_name == "High":
-                    num_to_keep = round(len(invMineables) * 0.5) # 50%
-                elif segment_name == "Moderate":
-                    num_to_keep = round(len(invMineables) * 0.5) # 50%
-                else:
-                    num_to_keep = round(len(invMineables) * 0.3)
-                indices = np.random.choice(len(invMineables), num_to_keep, replace=False)
                 invMineables = [invMineables[i] for i in indices]
-            
-            if invIngots:
-                if segment_name == "Max":
-                    num_to_keep = round(len(invIngots) * 0.65) # 65%
-                elif segment_name == "High":
-                    num_to_keep = round(len(invIngots) * 0.5) # 50%
-                elif segment_name == "Moderate":
-                    num_to_keep = round(len(invIngots) * 0.5) # 50%
-                else:
-                    num_to_keep = round(len(invIngots) * 0.3)
-                indices = np.random.choice(len(invIngots), num_to_keep, replace=False)
                 invIngots = [invIngots[i] for i in indices]
             
             invOresForCrafting

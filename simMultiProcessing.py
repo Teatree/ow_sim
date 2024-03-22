@@ -166,7 +166,7 @@ mega_deposits = ['SeismicQuartz', 'TectonicNeovite', 'HelioAgate']
 
 for row in deposit_spawn_data :
     # Using the region, stage, and deposit type as a unique key
-    key = (row['Region'], row['Region Stage'], row['Deposit Type'])
+    key = (row['Region'], row['RegionStage'], row['DepositType'])
     
     # Structuring the data for easy access
     deposits_info[key] = {
@@ -482,8 +482,6 @@ def worker(segment_data, shared_data, results):
             population = day_key[1]
             day = day_key[0]
 
-            
-
             # remove 30% of population
             if dailyShardCounts:
                 if segment_name == "Max":
@@ -578,6 +576,7 @@ def worker(segment_data, shared_data, results):
                 # Go through dailyShardCounts and see if there are any leftover from yesterday
                 # If yes, then use those for capturing instead of new ones
                 # Once old ones are through start processing new ones
+                        
                 if oldShardsUseCounter < len(dailyShardCounts):
                     currentShardsInv = dailyShardCounts[oldShardsUseCounter]
                     newEncounterResults, currentShardsInv = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, currentShardsInv, shard_powers, illuvialsCounts,
@@ -700,8 +699,20 @@ def worker(segment_data, shared_data, results):
                             essenceResult_counts[extraction['BonusEssenceExtracted']] += 1
 
             # Send populationShardCounts to daily shard counts so they can be processed
-            for dailyShards in populationlyShardCounts:
-                dailyShardCounts.append(dailyShards)
+            if dailyShardCounts:
+                for dIndex in range(0, len(dailyShardCounts)):
+                    if dIndex <= len(populationlyShardCounts):
+                        # Update the amounts
+                        for key, value in populationlyShardCounts[dIndex].items():
+                            dailyShardCounts[dIndex][key] += value
+                    else:
+                        # add new population inventories to the daily inventories
+                        dailyShardCounts.append(populationlyShardCounts[dIndex])
+                    dIndex += 1
+            else:
+                for p in populationlyShardCounts:
+                    dailyShardCounts.append(p)
+                
             
 
         ##print("OUTPUT:" + str(harvesting_data_for_writing))
@@ -787,7 +798,7 @@ def worker(segment_data, shared_data, results):
             simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                 mineable_counts_array.sum().item(), t0ORECounts_array.sum().item(), t1ORECounts_array.sum().item(),t2ORECounts_array.sum().item(), t3ORECounts_array.sum().item(), t4ORECounts_array.sum().item(), t5ORECounts_array.sum().item(), shardCounts_array.sum().item(), 
                                 *shardCountsVals, gemsCounts_array.sum().item(), *mineableCounts, harvestsCount, *harvestsCountsVals, harvestResult_counts_array.sum().item()-essenceResult_counts_array.sum().item(), essenceResult_counts_array.sum().item(), 
-                                *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults, crafted_ingots_counts_array.sum().item(), 0, *craftedIngotCounts, oresForCrafting]
+                                *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults, crafted_ingots_counts_array.sum().item(), 0, *craftedIngotCounts, oresForCrafting, str(dailyShardCounts)]
             #population_sim_summary.append(simDayData)
             results.append(simDayData)
     
@@ -833,14 +844,14 @@ def simulate_population_activities(shared_data):
     threads = []
     results = []
 
-    for segment_data in population_data:
-        t = threading.Thread(target=worker, args=(segment_data, shared_data, results))
-        t.start()
-        threads.append(t)
+    # for segment_data in population_data:
+    #     t = threading.Thread(target=worker, args=(segment_data, shared_data, results))
+    #     t.start()
+    #     threads.append(t)
 
-    # t = threading.Thread(target=worker, args=(population_data[3], shared_data, results))
-    # t.start()
-    # threads.append(t)
+    t = threading.Thread(target=worker, args=(population_data[0], shared_data, results))
+    t.start()
+    threads.append(t)
 
     # Wait for all threads to complete
     for t in threads:
