@@ -426,13 +426,18 @@ def worker(segment_data, shared_data, results):
     print("simulating " + segment_name)
 
     runlyShardCounts = [] # starting amount of shards that every Player in the segment has
-    invMineables = [] # for crafting Ingots
     
     population_sim_summary = []
 
     # Shards gathered in a day list
     dailyShardCounts = []
-
+    dailyMineableCounts = []
+    
+    crafted_ingots = [] 
+    oresForCrafting = []
+    
+    dailyOresForCrafting =  0
+    
     for day_key in tqdm(segment_data.items()):
         day = ""
         total_crypton_spent = 0
@@ -478,11 +483,11 @@ def worker(segment_data, shared_data, results):
         regionsS3 = 0
         
 
+        dailyIngotsCounts = []
         if day_key[0] != '':  # Skip the segment name
             population = day_key[1]
             day = day_key[0]
-
-            # remove 30% of population
+            # remove 30% of population (get random indexes from the lists)
             if dailyShardCounts:
                 if segment_name == "Max":
                     num_to_keep = round(len(dailyShardCounts) * 0.65) # 65%
@@ -493,29 +498,18 @@ def worker(segment_data, shared_data, results):
                 else:
                     num_to_keep = round(len(dailyShardCounts) * 0.3)
                 indices = np.random.choice(len(dailyShardCounts), num_to_keep, replace=False)
+                
+                
                 dailyShardCounts = [dailyShardCounts[i] for i in indices]
-
-            # remove 30% of population for Ores 
-            if invMineables:
-                if segment_name == "Max":
-                    num_to_keep = round(len(invMineables) * 0.65) # 65%
-                elif segment_name == "High":
-                    num_to_keep = round(len(invMineables) * 0.5) # 50%
-                elif segment_name == "Moderate":
-                    num_to_keep = round(len(invMineables) * 0.5) # 50%
-                else:
-                    num_to_keep = round(len(invMineables) * 0.3)
-                indices = np.random.choice(len(invMineables), num_to_keep, replace=False)
-                invMineables = [invMineables[i] for i in indices]
+                dailyMineableCounts = [dailyMineableCounts[i] for i in indices]
             
             oldShardsUseCounter = 0
+            oldMineablesCounter = 0
             
             populationlyShardCounts = []
-
+            populationlyMineablesCounts = []
+            
             while populationCount < population:
-                # invShards gets Inventories added to it here
-                # ======
-
                 # print(str(segment_name) + ":" + str(populationCount) + " / " + str(population), end="\r", flush=True)
                 populationCount += 1
                 
@@ -523,6 +517,7 @@ def worker(segment_data, shared_data, results):
                 regionStages = []
 
                 runlyShardCounts = []
+                runlyMineablesCounts = []
 
                 # region: Init for Segments
                 if segment_name == "Max": 
@@ -588,8 +583,6 @@ def worker(segment_data, shared_data, results):
                     newEncounterResults, currentShardsInv = publicSimulateEncountersPopulation(num_runs, regionNames, regionStages, energyForEncounter, energy_cost_per_encounter, shard_amounts, shard_powers, illuvialsCounts,
                                                                          encounter_types, illuvial_weights, illuvials_list, capture_difficulties)
                     shard_amounts = currentShardsInv
-
-
 
                  # ILLUVIAL ENCOUNTERS DON"T REMOVE
                 if encounterResults is None:
@@ -669,14 +662,13 @@ def worker(segment_data, shared_data, results):
                             runlyShardCounts.append(currentShardCounts)
 
                     if moreThanZeroOres == True:  
-                        if curr_ores_inv_counter < len(invMineables): 
-                            existing_ores_inv = invMineables[curr_ores_inv_counter]
+                        if curr_ores_inv_counter < len(runlyMineablesCounts): 
+                            existing_ores_inv = runlyMineablesCounts[curr_ores_inv_counter]
                             for k in existing_ores_inv:
                                 existing_ores_inv[k] += currentOresCounts[k]
                             curr_ores_inv_counter += 1
                         else: 
-                            invMineables.append(currentOresCounts)
-
+                            runlyMineablesCounts.append(currentOresCounts)
 
                 # Gather ALL invShards that this Person got from 1 Day
                 tempShardPile = {'Shard T0':0,'Shard T1':0,'Shard T2':0,'Shard T3':0,'Shard T4':0,'Shard T5':0}
@@ -685,7 +677,30 @@ def worker(segment_data, shared_data, results):
                         tempShardPile[key] += value
                 populationlyShardCounts.append(tempShardPile)
 
+                # Gather ALL invMineables that this Person got from 1 Day
+                tempMineable = {}
+                for inv in runlyMineablesCounts:
+                    for key, value in inv.items():
+                        if key in tempMineable.keys():
+                            tempMineable[key] += value
+                        else: 
+                            tempMineable[key] = value
+                populationlyMineablesCounts.append(tempMineable)
 
+                #=======Crafting one person one day 
+                if oldMineablesCounter < len(dailyMineableCounts):
+                    currentMineInv = dailyMineableCounts[oldMineablesCounter]
+                    crafted_ingots, oresForCrafting, currentMineInv = craft_ingots(currentMineInv, ingot_recipe_data, ingot_preference_weights)
+                    dailyMineableCounts[oldMineablesCounter] = currentMineInv
+                    oldMineablesCounter += 1
+                else:
+                    currentMineInv = tempMineable
+                    crafted_ingots, oresForCrafting, currentMineInv = craft_ingots(currentMineInv, ingot_recipe_data, ingot_preference_weights)
+                
+                dailyIngotsCounts.append(crafted_ingots)
+                dailyOresForCrafting += oresForCrafting
+                
+                #===============Harvesting===============================
                 simHarvestingResult = createHarvestingSimData(num_runs, regionStages, regionNames)
                 for run in simHarvestingResult:
                     for extraction in run['Extractions']:
@@ -698,6 +713,7 @@ def worker(segment_data, shared_data, results):
                         if extraction['BonusEssenceExtracted'] in essenceResult_counts:
                             essenceResult_counts[extraction['BonusEssenceExtracted']] += 1
 
+            #====================End of population loop=============================
             # Send populationShardCounts to daily shard counts so they can be processed
             if dailyShardCounts:
                 for dIndex in range(0, len(dailyShardCounts)):
@@ -712,9 +728,22 @@ def worker(segment_data, shared_data, results):
             else:
                 for p in populationlyShardCounts:
                     dailyShardCounts.append(p)
-                
-            
-
+                     
+            # Send populationlyMineablesCounts to daily Mineables counts so they can be processed
+            if dailyMineableCounts:
+                for dIndex in range(0, len(dailyMineableCounts)):
+                    if dIndex <= len(populationlyMineablesCounts):
+                        # Update the amounts
+                        for key, value in populationlyMineablesCounts[dIndex].items():
+                            dailyMineableCounts[dIndex][key] += value
+                    else:
+                        # add new population inventories to the daily inventories
+                        dailyMineableCounts.append(populationlyMineablesCounts[dIndex])
+                    dIndex += 1
+            else:
+                for p in populationlyMineablesCounts:
+                    dailyMineableCounts.append(p)
+                    
         ##print("OUTPUT:" + str(harvesting_data_for_writing))
         # calculate deposits
         for d in deposits:
@@ -783,22 +812,23 @@ def worker(segment_data, shared_data, results):
         gemsCounts_array = np.array(list(gemsCounts.values()))
 
         # # Craft Ingots out of Ores
-        # if len(invMineables) > 0:
-        #     currentOresInv = invMineables.pop()
-        #     crafted_ingots, oresForCrafting = craft_ingots(currentOresInv, ingot_recipe_data, ingot_preference_weights)
-        #     invMineables.append(currentOresInv)
-        # else:
-        #     crafted_ingots, oresForCrafting = craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights)
-        crafted_ingots, oresForCrafting = craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights)
+        crafted_ingots = {}
+        for ing in dailyIngotsCounts:
+            for key, value in ing.items():
+                if key in crafted_ingots:
+                    crafted_ingots[key] += value
+                else: 
+                    crafted_ingots[key] = value
+                    
+        # crafted_ingots, oresForCrafting, local_counts = craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights)
         craftedIngotCounts = list(crafted_ingots.values())
         crafted_ingots_counts_array = np.array(craftedIngotCounts)
-
 
         if day_key[0] != '':  # Skip the segment name
             simDayData = [day, segment_name, population, total_crypton_spent, runs, regionsAB, regionsBS, regionsCW, regionsS0, regionsS1, regionsS2, regionsS3, extractionsCount, *dpeositCounts, 
                                 mineable_counts_array.sum().item(), t0ORECounts_array.sum().item(), t1ORECounts_array.sum().item(),t2ORECounts_array.sum().item(), t3ORECounts_array.sum().item(), t4ORECounts_array.sum().item(), t5ORECounts_array.sum().item(), shardCounts_array.sum().item(), 
                                 *shardCountsVals, gemsCounts_array.sum().item(), *mineableCounts, harvestsCount, *harvestsCountsVals, harvestResult_counts_array.sum().item()-essenceResult_counts_array.sum().item(), essenceResult_counts_array.sum().item(), 
-                                *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults, crafted_ingots_counts_array.sum().item(), 0, *craftedIngotCounts, oresForCrafting, str(dailyShardCounts)]
+                                *harvestResultCountsVals, *essenceResultCountsVals, *encounterResults, crafted_ingots_counts_array.sum().item(), 0, *craftedIngotCounts, oresForCrafting, str(dailyShardCounts), str(mineable_counts)]
             #population_sim_summary.append(simDayData)
             results.append(simDayData)
     
@@ -837,7 +867,7 @@ def craft_ingots(mineable_counts, ingot_recipe_data, ingot_preference_weights):
                     local_counts[ore] -= amount * craft_count
                     oresUsedForCrafting += amount * craft_count
 
-    return ingotCounts, oresUsedForCrafting
+    return ingotCounts, oresUsedForCrafting, local_counts
 
 def simulate_population_activities(shared_data):
     num_threads = 4
@@ -957,6 +987,7 @@ def createMiningSimData(num_runs, regionStages, regionNames):
 
             mineableExtracted = choose_mineables(region_name, str("S"+str(region_stage)), deposit)
             energySpentThisExtraction = False
+            
             for mineable in mineableExtracted:
                 extractions.append({
                     'Ex': extractionCounter,
